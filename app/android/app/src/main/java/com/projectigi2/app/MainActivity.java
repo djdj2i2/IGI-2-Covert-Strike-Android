@@ -110,6 +110,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     // the main menu closes the app instead of leaving a black screen behind.
     private volatile boolean quitWatcherStopped = false;
     private Thread quitWatcherThread = null;
+    // Set only by the quit watcher when it has seen a genuine Quit (game thread ended
+    // while in the foreground). onDestroy kills the process when this is set, so the
+    // next PLAY starts a fresh process instead of re-entering the never-shut-down
+    // runtime in this one (WebGPU Crash A: second-launch SIGSEGV). It is never set on
+    // backgrounding, tab-out or surface loss, where the game must survive to resume.
+    private volatile boolean gameQuitRequested = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -910,6 +916,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 }
                 if (sawRunning && isResumed && isGameStarted) {
                     Log.i(TAG, "Game exited in the foreground (Quit): closing the app");
+                    gameQuitRequested = true;
                     runOnUiThread(() -> finishAffinity());
                     break;
                 }
@@ -1205,6 +1212,17 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
         super.onDestroy();
         NativeEngine.nativeShutdown();
+        // Genuine Quit only: terminate the process so the next PLAY is a fresh process.
+        // CoreCLR is never shut down, so re-entering the runtime in this process crashes
+        // on the second launch (WebGPU Crash A, ~23 ms into the second game thread).
+        // This runs after the activity is finished and the game thread is joined, and
+        // never on backgrounding — the pause-and-resume path needs the process to
+        // survive a tab-out. killProcess (SIGKILL) is used over System.exit so no
+        // finalizer or shutdown hook runs against native state that is mid-teardown.
+        if (gameQuitRequested) {
+            Log.i(TAG, "Game quit: terminating process so the next launch is fresh");
+            android.os.Process.killProcess(android.os.Process.myPid());
+        }
     }
 
     private void applyImmersiveMode() {
