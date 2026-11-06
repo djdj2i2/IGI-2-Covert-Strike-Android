@@ -130,7 +130,7 @@ public class Toggle : Control
         painter.FillCutRect(track, cut, Corners, UiPalette.Fade(knobColor, appear));
         painter.PopClip();
 
-        float sizePx = painter.Context.Px(14f);
+        float sizePx = painter.Context.Px(17f) * LayoutContext.GlobalTextScale;
         float tracking = 0.2f;
         DrawWord(Off, new UiRect(track.X, track.Y, half, track.Height), Interpolate.Lerp(theme.TextBright, theme.TextDim, on));
         DrawWord(On, new UiRect(track.X + half, track.Y, half, track.Height), Interpolate.Lerp(theme.TextDim, theme.OnAccent, on));

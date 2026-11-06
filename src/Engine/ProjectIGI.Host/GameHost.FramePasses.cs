@@ -52,12 +52,18 @@ public sealed partial class GameHost
     {
         // The menu has nothing to gain past the display's rate, and a GPU kept at full load turns every
         // small upload between frames into a hitch; the game is held to the player's cap where Reflex
-        // is not holding it. Only after a pass that presented, or the pacing would throttle the
-        // simulation's ticks as well; never under a capture, whose clock is its own.
+        // is not holding it. Never under a capture, whose clock is its own.
         // A level held behind the loading screen while its field bakes is paced harder still: the
         // withheld frames exist to advance the temporal passes, which thirty a second does as well as
         // a hundred, and every core the render thread is not spinning on is one the bake gets.
-        if (state.LastPassRendered && !_options.Lockstep && !_options.IsBenchmark)
+        //
+        // The pacing is every pass, not only after one that presented: the old gate let the pass after
+        // every simulation tick through unpaced -- and reset the pacer's cadence on the way -- so a
+        // 30 fps cap still ran at two or three times that in a mission. A pass that only ticks still
+        // waits out the remainder of its interval, which is what makes the cap strict; the tick clock
+        // runs on wall-clock deadlines with a catch-up budget, so the wait never starves it.
+        // A cap of nought is uncapped, as the menu says: the pacer does nothing at or below zero.
+        if (!_options.Lockstep && !_options.IsBenchmark)
         {
             if (IsWarmingUp && _gi.FieldBake is not null)
             {
@@ -65,8 +71,7 @@ public sealed partial class GameHost
             }
             else
             {
-                int cap = FrameRateCap(_menuFlow.MenuMode);
-                state.MenuPacer.Pace(cap > 0 ? cap : 30);
+                state.MenuPacer.Pace(FrameRateCap(_menuFlow.MenuMode));
             }
         }
         else
@@ -74,7 +79,6 @@ public sealed partial class GameHost
             state.MenuPacer.Reset();
         }
 
-        state.LastPassRendered = false;
         state.PassStartedAt = System.Diagnostics.Stopwatch.GetTimestamp();
 
         // NVIDIA Reflex, where its runtime runs: its mode, and the frame it paces. The frame begins only

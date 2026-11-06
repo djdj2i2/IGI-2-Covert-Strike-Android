@@ -8,14 +8,14 @@ namespace ProjectIGI.Rendering.Pipeline;
 /// <remarks>
 /// <para>
 /// A setting that is stored and then ignored is the worst kind of dead control: the value persists, the
-/// options screen shows it, and the picture never changes — so the person changing it concludes the
+/// options screen shows it, and the picture never changes â€” so the person changing it concludes the
 /// effect is broken rather than absent, and anyone comparing two renders is comparing configurations
 /// that were never the same. The names are therefore reported through
 /// <see cref="GraphicsCapabilities.UnimplementedSettings"/>, where the shell says so out loud at
 /// start-up, and each disappears from the list on the day its pass lands.
 /// </para>
 /// <para>
-/// The alternative — throwing — would be worse and not more honest: the game calls these
+/// The alternative â€” throwing â€” would be worse and not more honest: the game calls these
 /// unconditionally, so a device that threw would run no frame at all rather than the frame it can draw.
 /// </para>
 /// </remarks>
@@ -48,10 +48,42 @@ public sealed partial class GraphicsDevice
         : 1f;
 
     /// <inheritdoc/>
-    public void SetTextureQuality(int maxAnisotropy) => _textures.MaxAnisotropy = maxAnisotropy;
+    /// <remarks>
+    /// Re-resolves the samplers of textures already loaded, so the change shows at once instead of
+    /// waiting for the next level; the bind groups that captured the old samplers are forgotten and
+    /// rebuilt on their next draw, as <see cref="SetTextureLodBias"/> does for the mip bias.
+    /// </remarks>
+    public void SetTextureQuality(int maxAnisotropy)
+    {
+        _textures.MaxAnisotropy = maxAnisotropy;
+        ReapplyTextureSamplers("Texture quality", $"max anisotropy {maxAnisotropy}");
+    }
 
     /// <inheritdoc/>
-    public void SetPointMips(bool point) => _textures.PointMips = point;
+    public void SetPointMips(bool point)
+    {
+        _textures.PointMips = point;
+        ReapplyTextureSamplers("Mip blending", point ? "nearest" : "blended");
+    }
+
+    /// <summary>Re-resolves every loaded texture's sampler and drops the bind groups that captured the old ones.</summary>
+    private void ReapplyTextureSamplers(string what, string detail)
+    {
+        IReadOnlyList<uint> changed = _textures.ReapplySamplers();
+        if (changed.Count == 0)
+        {
+            return;
+        }
+
+        // Every group that captured the old sampler goes, and is rebuilt with the new one on its next draw.
+        foreach (uint id in changed)
+        {
+            _sprites.ForgetTexture(id);
+            _materials.Forget(id);
+        }
+
+        ReportOnChange(what, detail);
+    }
 
     /// <inheritdoc/>
     public void SetStageTiming(bool enabled) => _profiler.Enabled = enabled;

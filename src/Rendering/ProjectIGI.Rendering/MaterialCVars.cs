@@ -11,7 +11,7 @@ public static class MaterialCVars
     /// <summary>How strongly the derived surface-detail maps are applied, or 0 to ignore them.</summary>
     /// <remarks>
     /// <para>
-    /// I.G.I. ships a diffuse texture per surface and nothing else — no normal map, no roughness map.
+    /// I.G.I. ships a diffuse texture per surface and nothing else â€” no normal map, no roughness map.
     /// A physically-based shading model has four inputs and the data answers one, so the rest are
     /// derived from the diffuse itself and registered per texture. This is how far to trust that.
     /// </para>
@@ -105,7 +105,7 @@ public static class MaterialCVars
     /// needs no setting of its own to point at it.
     /// </para>
     /// <para>
-    /// The comparison it made is worth keeping, though, and it is worth more now — the folder can replace
+    /// The comparison it made is worth keeping, though, and it is worth more now â€” the folder can replace
     /// anything, not only a texture. Off bypasses every override without deleting a file, so the two
     /// pictures are one keypress apart. Not saved: it is a switch for looking at something, and a player
     /// who put files in the folder meant them to be used.
@@ -203,11 +203,26 @@ public static class MaterialCVars
             "r_mip_point",
             false,
             CVarOptions.Archive,
-            "Take each texture's nearest mip level instead of blending two, as the original does. Applies to textures loaded afterwards."),
+            "Take each texture's nearest mip level instead of blending two, as the original does. Applies at once, to textures already loaded as well as new ones."),
         vanilla: "1",
         enhanced: "0",
         high: "0",
         ultra: "0");
+
+    /// <summary>How sharp textures stay at a distance: low, medium or high.</summary>
+    /// <remarks>
+    /// A user bias on top of the mip bias the render scale asks for: high samples one level sharper,
+    /// low one level softer. It rides <see cref="TextureLodBias.FromSettings"/>, so it reaches textures
+    /// already loaded through the same re-resolve, and it is honoured wherever the adapter offers a mip
+    /// bias at all -- Vulkan does; WebGPU has no such sampler state and samples unbiased.
+    /// </remarks>
+    public static readonly NumericCVar<int> TextureQuality = CVar.Int(
+        "r_texture_quality",
+        1,
+        0,
+        2,
+        CVarOptions.Archive,
+        "Texture quality: 0 low, 1 medium, 2 high. Biases mip selection; high samples sharper levels. Vulkan only.");
 
     /// <summary>The registry the renderer's own settings describe themselves to.</summary>
     private static GraphicsPresetRegistry Presets => GraphicsPresetRegistry.Default;

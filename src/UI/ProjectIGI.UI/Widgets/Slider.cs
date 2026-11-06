@@ -23,7 +23,7 @@ public class Slider : Control
     private const float ThumbHeightUnits = 16f;
     private const float ReadoutGapUnits = 14f;
     private const float ReadoutMinUnits = 44f;
-    private const float ReadoutSizeUnits = 14f;
+    private const float ReadoutSizeUnits = 17f;
 
     private readonly Spring _display;
     private float _value;
@@ -32,6 +32,7 @@ public class Slider : Control
     private float _readoutValue;
     private float _readoutWidth;
     private float _readoutWidthScale = -1f;
+    private float _readoutWidthTextScale = -1f;
     private float _readoutWidthValue;
 
     /// <summary>Initializes a new instance of the <see cref="Slider"/> class.</summary>
@@ -180,7 +181,7 @@ public class Slider : Control
         Bgra32 thumb = IsEnabled ? Interpolate.Lerp(Theme.TextBright, Theme.AccentHover, highlight * 0.35f) : Theme.TextDisabled;
         painter.FillRect(new UiRect(thumbX, track.Y, thumbW, track.Height), UiPalette.Fade(thumb, appear));
 
-        float sizePx = context.Px(ReadoutSizeUnits);
+        float sizePx = context.Px(ReadoutSizeUnits) * LayoutContext.GlobalTextScale;
         string readout = Readout();
         float readoutWidth = Theme.Mono.MeasureWidth(readout, sizePx);
         float right = Bounds.Right - context.Px(UiRowStyle.Inset);
@@ -210,16 +211,17 @@ public class Slider : Control
     // sideways as a formatted readout grows a digit.
     private float ReadoutWidth(LayoutContext context)
     {
-        if (_readoutWidthScale == context.Scale && _readoutWidthValue == _value)
+        if (_readoutWidthScale == context.Scale && _readoutWidthTextScale == LayoutContext.GlobalTextScale && _readoutWidthValue == _value)
         {
             return _readoutWidth;
         }
 
-        float size = context.Px(ReadoutSizeUnits);
+        float size = context.Px(ReadoutSizeUnits) * LayoutContext.GlobalTextScale;
         float widest = MathF.Max(Theme.Mono.MeasureWidth(Readout(), size), Theme.Mono.MeasureWidth(Format(Minimum), size));
         widest = MathF.Max(widest, Theme.Mono.MeasureWidth(Format(Maximum), size));
 
         _readoutWidthScale = context.Scale;
+        _readoutWidthTextScale = LayoutContext.GlobalTextScale;
         _readoutWidthValue = _value;
         _readoutWidth = MathF.Max(context.Px(ReadoutMinUnits), widest);
         return _readoutWidth;

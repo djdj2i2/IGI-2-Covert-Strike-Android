@@ -164,8 +164,8 @@ public class OptionCycler : Control
 
         painter.FillRect(new UiRect(Bounds.Right - context.Px(1f), Bounds.Y, context.Px(1f), Bounds.Height), UiPalette.White(0.06f * appear));
 
-        float labelSize = context.Px(10f);
-        float valueSize = context.Px(26f);
+        float labelSize = context.Px(13f) * LayoutContext.GlobalTextScale;
+        float valueSize = context.Px(26f) * LayoutContext.GlobalTextScale;
         float gap = context.Px(9f);
         float block = Theme.Mono.LineHeight(labelSize) + gap + valueSize + gap + context.Px(2f);
         float x = Bounds.X + context.Px(26f);

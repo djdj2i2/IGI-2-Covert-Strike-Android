@@ -786,8 +786,6 @@ public sealed partial class GameHost : IDisposable
                 continue;
             }
 
-            state.LastPassRendered = true;
-
             // Everything the frame simulated has run; recording its commands starts now.
             _device.MarkLatency(LatencyMarker.SimulationEnd);
             _device.MarkLatency(LatencyMarker.RenderSubmitStart);
