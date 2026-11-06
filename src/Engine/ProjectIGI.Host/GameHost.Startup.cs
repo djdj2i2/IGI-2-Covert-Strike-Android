@@ -410,6 +410,17 @@ public sealed partial class GameHost
             if (_retailMenus is null)
             {
                 _logger.Warning("Menu", "This title draws no retail menus; the menu script is not started.");
+
+                // No retail menus for this title (IGI 2 registers none): fall back to the
+                // cinematic shell. The -vanillamenu startup branch Android always takes only
+                // requests the flow's MainMenu event and never switches MenuMode on, so without
+                // this the shell's draw block stays gated off and the menu is a black screen
+                // with only the host overlays (cheats gear, keyboard) over it. MenuMode also
+                // makes OverShowcase true, and ShowcasePending asks UpdateMenuBackdrop for the
+                // first showcase backdrop a couple of frames in, as the default branch does.
+                // Titles WITH retail menus never reach this branch, so they are unaffected.
+                _menuFlow.MenuMode = true;
+                _menuFlow.ShowcasePending = true;
             }
         };
     }
