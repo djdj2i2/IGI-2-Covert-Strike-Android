@@ -48,6 +48,15 @@ public static unsafe class WebGpuAdapter
     /// </remarks>
     public static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
 
+    /// <summary>The last uncaptured WebGPU error the device reported, if any.</summary>
+    /// <remarks>
+    /// Written by the uncaptured-error callback installed in <see cref="RequestDevice"/> and kept for
+    /// the managed side to surface. The error message names the module the failure came from (its
+    /// label), which is what makes a future bad module diagnosable from the log instead of a
+    /// tombstone. A read does not clear it; a device that reported nothing leaves it null.
+    /// </remarks>
+    public static string? LastUncapturedError { get; private set; }
+
     /// <summary>What the callback writes and the caller reads.</summary>
     private sealed class Answer
     {
@@ -144,6 +153,20 @@ public static unsafe class WebGpuAdapter
                     deviceLostCallbackInfo = new WGPUDeviceLostCallbackInfo
                     {
                         mode = WGPUCallbackMode.AllowProcessEvents,
+                    },
+
+                    // An uncaptured-error handler, so a bad module is a logged error and a managed
+                    // exception, not a dead process. Without one, wgpu-native's default handler
+                    // panics in a nounwind context and aborts: that is how a single unparsable
+                    // shader module (Water, Crash B) killed the game with a SIGABRT in
+                    // wgpuDeviceCreateShaderModuleTrusted, before the create call could return its
+                    // invalid handle and the existing throw in CreateShaderModule could name the
+                    // module. The callback is a static method, so it needs no rooting (see the
+                    // remarks on this class). Unlike the device-lost info, this info carries no
+                    // mode: the error arrives as it is reported.
+                    uncapturedErrorCallbackInfo = new WGPUUncapturedErrorCallbackInfo
+                    {
+                        callback = &OnUncapturedError,
                     },
                 };
 
@@ -322,5 +345,29 @@ public static unsafe class WebGpuAdapter
         answer.Handle = device.Handle;
         answer.Message = WebGpuString.Read(message);
         answer.Completed = true;
+    }
+
+    /// <summary>Receives an error wgpu-native had nowhere else to put.</summary>
+    /// <remarks>
+    /// This is what stands between a bad shader module and a SIGABRT: with no handler installed,
+    /// wgpu-native's default handler panics, and a panic in a nounwind context aborts the process
+    /// (Crash B: the Water module's WGSL parse error, delivered while creating the module). With
+    /// this handler installed the error is reported here instead, the create call returns its
+    /// invalid handle, and CreateShaderModule throws a managed exception naming the module. The
+    /// message names the module's label, so the log line alone identifies the next bad module.
+    /// The callback may arrive on the next event pump rather than inside the failing call, so the
+    /// managed throw is what the caller sees first and this line is the diagnosis that follows it.
+    /// </remarks>
+    [UnmanagedCallersOnly(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    private static void OnUncapturedError(
+        WGPUDevice* device,
+        WGPUErrorType type,
+        WGPUStringView message,
+        void* userdata1,
+        void* userdata2)
+    {
+        string error = $"WebGPU {type} error: {WebGpuString.Read(message)}".TrimEnd();
+        LastUncapturedError = error;
+        Console.WriteLine($"[WebGPU] Uncaptured error: {error}");
     }
 }
