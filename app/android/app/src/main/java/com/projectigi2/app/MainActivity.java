@@ -456,12 +456,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 File managedAssetsDir = new File(managedDir, "Assets");
                 copyAssetFolder(getAssets(), "public/Assets", managedAssetsDir);
 
-                // Copy authentic ripped loading.png, boot-bg.png, img.png and libopenal.so
+                // Copy img.png and libopenal.so (the mission loading art now comes from the
+                // retail game data, not the old bundled loading.png / boot-bg.png)
                 File[] imgDirs = new File[]{filesDir, assetsDir, managedDir, managedAssetsDir};
                 for (File d : imgDirs) {
                     copySingleAssetSafe("img.png", new File(d, "img.png"));
-                    copySingleAssetSafe("public/loading.png", new File(d, "loading.png"));
-                    copySingleAssetSafe("public/boot-bg.png", new File(d, "boot-bg.png"));
                     copySingleAssetSafe("managed/libopenal.so", new File(d, "libopenal.so"));
                 }
 

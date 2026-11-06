@@ -2,6 +2,8 @@ using System.IO;
 using ProjectIGI.Core.Diagnostics;
 using ProjectIGI.Core.Graphics;
 using ProjectIGI.Core.Numerics;
+using ProjectIGI.Formats.Ilff;
+using ProjectIGI.Formats.Sprites;
 using ProjectIGI.Frontend;
 using ProjectIGI.Game.World;
 using ProjectIGI.Host.Lighting;
@@ -55,69 +57,68 @@ public sealed partial class GameHost
     private MissionDescriptor? _loadingMission;
     private MissionInfo? _loadingInfo;
 
-    private UiImage _loadingBgTexture = UiImage.None;
-    private bool _loadingBgAttempted;
+    /// <summary>The loading mission's briefing picture, drawn as the load's backdrop.</summary>
+    private SpriteResource? _loadingBriefing;
+    private bool _loadingBriefingAttempted;
+    private int _loadingBriefingMissionId = -1;
 
-    private UiImage GetLoadingTexture()
+    /// <summary>Loads the loading mission's briefing picture out of the retail missionsprites archive.</summary>
+    /// <remarks>
+    /// The old splash was a bundled OpenIGI <c>loading.png</c> / <c>boot-bg.png</c> shipped in the APK;
+    /// the authentic art is the mission's own briefing sprite (<c>mission{id}.spr</c> in
+    /// <c>LOCAL:menusystem/missionsprites.res</c>), the same picture the mission screen shows. The
+    /// retail <c>loadingscreen</c> resource script would hold the true loading art, but it is not in
+    /// hand — this is the closest authentic picture the game data actually carries.
+    /// </remarks>
+    private SpriteResource? GetLoadingBriefing()
     {
-        if (_loadingBgAttempted)
+        int id = _loadingMission?.Id ?? -1;
+        if (_loadingBriefingAttempted && _loadingBriefingMissionId == id)
         {
-            return _loadingBgTexture;
+            return _loadingBriefing;
         }
 
-        _loadingBgAttempted = true;
-
-        string baseDir = AppContext.BaseDirectory;
-        string userDir = Environment.GetEnvironmentVariable("ProjectIGI_USER_DIR") ?? string.Empty;
-        string parentDir = !string.IsNullOrEmpty(userDir) ? (Path.GetDirectoryName(userDir) ?? userDir) : string.Empty;
-
-        string[] paths =
-        [
-            Path.Combine(userDir, "loading.png"),
-            Path.Combine(parentDir, "loading.png"),
-            Path.Combine(baseDir, "loading.png"),
-            Path.Combine(userDir, "Assets", "loading.png"),
-            Path.Combine(parentDir, "Assets", "loading.png"),
-            Path.Combine(baseDir, "Assets", "loading.png"),
-            "/data/user/0/com.projectigi2.app/files/loading.png",
-            "/data/user/0/com.projectigi2.app/files/Project IGI 2/loading.png",
-            "/data/user/0/com.projectigi2.app/files/Assets/loading.png",
-            "/data/user/0/com.projectigi2.app/files/managed/loading.png",
-            "/data/user/0/com.projectigi2.app/files/managed/Assets/loading.png",
-            Path.Combine(userDir, "boot-bg.png"),
-            Path.Combine(parentDir, "boot-bg.png"),
-            Path.Combine(baseDir, "boot-bg.png"),
-            "/data/user/0/com.projectigi2.app/files/boot-bg.png",
-            "/data/user/0/com.projectigi2.app/files/Project IGI 2/boot-bg.png",
-            "/data/user/0/com.projectigi2.app/files/Assets/boot-bg.png",
-            "/data/user/0/com.projectigi2.app/files/managed/boot-bg.png",
-            Path.Combine(baseDir, "..", "loading.png"),
-            Path.Combine(baseDir, "..", "Assets", "loading.png"),
-            Path.Combine(baseDir, "Assets", "loading_images", "loading.png"),
-            "loading.png",
-            "boot-bg.png"
-        ];
-
-        foreach (string path in paths)
+        if (_loadingBriefing is not null && _loadingBriefingMissionId != id)
         {
-            try
-            {
-                if (File.Exists(path))
-                {
-                    (Bgra32[] px, int w, int h) = PngReader.Read(path);
-                    TextureHandle handle = _device.CreateTexture(new TextureDescription(w, h), px);
-                    _loadingBgTexture = new UiImage(handle.Id);
-                    _logger.Information("Mission", $"Loaded mission load splash texture from: {path} ({w}x{h})");
-                    break;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Warning("Mission", $"Failed to decode loading texture from {path}: {ex.Message}");
-            }
+            _loadingBriefing.Dispose();
+            _loadingBriefing = null;
         }
 
-        return _loadingBgTexture;
+        _loadingBriefingAttempted = true;
+        _loadingBriefingMissionId = id;
+
+        if (_loadingMission is not { } mission)
+        {
+            return null;
+        }
+
+        const string archivePath = "LOCAL:menusystem/missionsprites.res";
+        try
+        {
+            if (!_fileSystem.Exists(archivePath))
+            {
+                _logger.Warning("Mission", $"No mission briefing art: '{archivePath}' is not in the game data.");
+                return null;
+            }
+
+            IresArchive archive = _fileSystem.ReadArchive(archivePath);
+            IresEntry? entry = archive.FindBody(mission.BriefingSprite)
+                ?? archive.FindBody($"mission{mission.Id}.spr");
+            if (entry is null)
+            {
+                _logger.Warning("Mission", $"No briefing sprite for mission {mission.Id} in '{archivePath}'.");
+                return null;
+            }
+
+            _loadingBriefing = SpriteResource.Upload(_device, SpriteLoader.Load(entry.Data, entry.Name));
+            _logger.Information("Mission", $"Loaded mission load art from '{archivePath}': {entry.Name}.");
+        }
+        catch (Exception ex)
+        {
+            _logger.Warning("Mission", $"Failed to load briefing art for mission {mission.Id}: {ex.Message}");
+        }
+
+        return _loadingBriefing;
     }
 
     /// <summary>How many of the blocking load's stages have finished, for the bar while it blocks.</summary>
@@ -520,7 +521,7 @@ public sealed partial class GameHost
         _scheduler.Flush();
     }
 
-    /// <summary>Paints the loading screen: authentic IGI tactical loading screen with splash background, corner brackets, mission info, and bottom phosphor green progress bar.</summary>
+    /// <summary>Paints the loading screen: the loading mission's retail briefing picture, its name, and the bottom progress bar.</summary>
     /// <param name="batch">The 2D batch, not begun.</param>
     private void PaintLoadingScreen(SpriteBatch batch)
     {
@@ -544,12 +545,11 @@ public sealed partial class GameHost
         // 1. Deep authentic IGI tactical black background
         painter.FillRect(new UiRect(0f, 0f, width, height), Bgra32.FromRgb(8, 10, 18));
 
-        // 2. Fullscreen authentic retail loading splashscreen (loading.png)
-        UiImage loadingTexture = GetLoadingTexture();
-        if (loadingTexture.IsValid)
+        // 2. Fullscreen: the loading mission's own retail briefing picture. When the picture
+        // cannot be found the dark background stands on its own — never the old bundled splash.
+        if (GetLoadingBriefing() is { } briefing)
         {
-            UiRect imgRect = new UiRect(0f, 0f, width, height);
-            painter.DrawSprite(loadingTexture, imgRect, UiRect.Unit, Bgra32.White, UiBlend.Opaque);
+            briefing.DrawStretched(batch, 0, new RectF(0f, 0f, width, height), Bgra32.White, BlendMode.Opaque);
         }
 
         // 3. Classic Authentic IGI Phosphor Green Bottom Progress Bar
@@ -584,6 +584,16 @@ public sealed partial class GameHost
         {
             float labelY = barY - (17f * scale);
             float labelSize = 13f * scale;
+
+            // Centred above the bar: the mission being loaded.
+            string missionName = (_loadingInfo?.Name
+                ?? (_loadingMission is { } loading ? _menuStrings?.Get(loading.Name) ?? loading.Name : string.Empty))
+                .ToUpperInvariant();
+            if (missionName.Length > 0)
+            {
+                float nameW = st.Mono.MeasureWidth(missionName, labelSize);
+                painter.DrawText(st.Mono, missionName, new UiVec2((width - nameW) / 2f, labelY - (24f * scale)), labelSize, Bgra32.FromRgb(180, 205, 240));
+            }
 
             // Left: stage / status label
             string stage = _warmUp.IsActive && !string.IsNullOrEmpty(_warmUp.Stage) ? _warmUp.Stage : "LOADING";

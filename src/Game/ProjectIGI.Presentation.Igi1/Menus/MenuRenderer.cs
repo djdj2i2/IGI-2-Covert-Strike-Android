@@ -39,6 +39,18 @@ public sealed class MenuRenderer : IDisposable
     /// </remarks>
     public MenuStyle Style { get; set; } = MenuStyle.Igi1;
 
+    /// <summary>The mission-select screen's number in the menu script.</summary>
+    private const int MissionSelectScreenId = 914;
+
+    /// <summary>Gets or sets the mission-select screen's background, when a title supplies its own.</summary>
+    /// <remarks>
+    /// The script gives every screen the same <c>mainmenu.jpg</c> background. I.G.I. 2's mission-select
+    /// screen instead shows the game's cover art, which is not in the retail data — the title's
+    /// presenter loads it from the app's own files and lends it here. Borrowed, not owned: the presenter
+    /// disposes it. Null draws the script's background, as before.
+    /// </remarks>
+    public SpriteResource? MissionSelectBackground { get; set; }
+
     /// <summary>Gets the magnification the last draw used.</summary>
     public int EffectiveScale => _scale;
 
@@ -102,7 +114,17 @@ public sealed class MenuRenderer : IDisposable
 
         batch.Begin();
 
-        if (TryGetSprite(screen.Background) is { Asset.TileLayout: not null } background)
+        // Screen 914, the mission select, shows the title's own cover art where the script's
+        // background would go; every other screen draws the background the script names.
+        if (screen.Id == MissionSelectScreenId && MissionSelectBackground is { Asset.TileLayout: not null } select)
+        {
+            select.DrawTiled(
+                batch,
+                new RectF(0, 0, screenWidth, screenHeight),
+                Bgra32.White,
+                BlendMode.Opaque);
+        }
+        else if (TryGetSprite(screen.Background) is { Asset.TileLayout: not null } background)
         {
             background.DrawTiled(
                 batch,
