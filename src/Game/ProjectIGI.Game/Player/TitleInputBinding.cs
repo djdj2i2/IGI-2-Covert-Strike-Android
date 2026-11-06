@@ -16,18 +16,40 @@ public static class TitleInputBindings
     /// <summary>Adds missing controls without replacing saved assignments or occupying an assigned key.</summary>
     /// <param name="profile">The profile to extend.</param>
     /// <param name="bindings">The title's additional controls.</param>
+    /// <remarks>
+    /// A row an earlier build left behind unbound is repaired to the title's default, not left dead:
+    /// a profile saved before a default key existed keeps the old unbound row (prone shipped unbound
+    /// before it was given KEY_X), and only adding missing rows would leave that button silent for
+    /// ever. A row the player rebound to something usable is left exactly as they set it.
+    /// </remarks>
     public static void RestoreMissing(PlayerProfile profile, IReadOnlyList<TitleInputBinding> bindings)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(bindings);
         foreach (TitleInputBinding binding in bindings)
         {
-            if (profile.Bindings.Exists(b => string.Equals(b.Action, binding.Default.Action, StringComparison.OrdinalIgnoreCase))) { continue; }
-            bool occupied = profile.Bindings.Exists(b => Label(b.Action, bindings) is not null
-                && string.Equals(b.Device, binding.Default.Device, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(b.Key, binding.Default.Key, StringComparison.OrdinalIgnoreCase));
-            profile.Bindings.Add(occupied ? binding.Default with { Key = PlayerProfile.UnboundKey } : binding.Default);
+            int index = profile.Bindings.FindIndex(b => string.Equals(b.Action, binding.Default.Action, StringComparison.OrdinalIgnoreCase));
+            if (index >= 0)
+            {
+                if (!HasUsableRow(profile, binding.Default.Action))
+                {
+                    profile.Bindings[index] = UnboundReplacement(profile, bindings, binding);
+                }
+
+                continue;
+            }
+
+            profile.Bindings.Add(UnboundReplacement(profile, bindings, binding));
         }
+    }
+
+    /// <summary>The binding a control gets when it has none usable: its default, or unbound when another visible control already holds that key.</summary>
+    private static InputBinding UnboundReplacement(PlayerProfile profile, IReadOnlyList<TitleInputBinding> bindings, TitleInputBinding binding)
+    {
+        bool occupied = profile.Bindings.Exists(b => Label(b.Action, bindings) is not null
+            && string.Equals(b.Device, binding.Default.Device, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(b.Key, binding.Default.Key, StringComparison.OrdinalIgnoreCase));
+        return occupied ? binding.Default with { Key = PlayerProfile.UnboundKey } : binding.Default;
     }
 
     /// <summary>Gets the shared controls superseded by the title's own bindings.</summary>
@@ -79,12 +101,35 @@ public static class TitleInputBindings
         }
     }
 
+    /// <summary>Whether the profile has any row for an action that can be pressed: a key, a mouse button, or a wheel notch.</summary>
+    private static bool HasUsableRow(PlayerProfile? profile, string action)
+    {
+        IReadOnlyList<InputBinding> bindings = profile?.Bindings ?? PlayerProfile.DefaultBindings;
+        foreach (InputBinding binding in bindings)
+        {
+            if (!string.Equals(binding.Action, action, StringComparison.OrdinalIgnoreCase)) { continue; }
+            if (string.Equals(binding.Device, InputBindingKeyNames.KeyboardDevice, StringComparison.OrdinalIgnoreCase)
+                && InputBindingKeyNames.TryParseKeyboardKey(binding.Key, out _)) { return true; }
+            if (string.Equals(binding.Device, InputBindingKeyNames.MouseDevice, StringComparison.OrdinalIgnoreCase)
+                && (InputBindingKeyNames.TryParseMouseButton(binding.Key, out _)
+                    || InputBindingKeyNames.TryParseMouseWheel(binding.Key, out _))) { return true; }
+        }
+
+        return false;
+    }
+
     /// <summary>Samples held controls or frame edges, including user rebindings and explicitly unbound controls.</summary>
     /// <param name="profile">The active profile.</param>
     /// <param name="input">The current input frame.</param>
     /// <param name="bindings">The title's additional controls.</param>
     /// <param name="pressed">Whether to read rising edges rather than held keys.</param>
     /// <returns>The title's action mask.</returns>
+    /// <remarks>
+    /// The touch screen holds a title action's default key when the saved row cannot be pressed (see
+    /// <c>GameHost.Want</c>), so this reads that same default when the profile has no usable row for
+    /// the action: the two paths must agree, or the button holds a key the player never sees.
+    /// A row the player rebound stays theirs alone — the default is only read when no row parses.
+    /// </remarks>
     public static ulong Sample(PlayerProfile? profile, InputState input, IReadOnlyList<TitleInputBinding> bindings, bool pressed)
     {
         ArgumentNullException.ThrowIfNull(input);
@@ -92,8 +137,23 @@ public static class TitleInputBindings
         ulong mask = 0;
         foreach (TitleInputBinding binding in bindings)
         {
-            if (pressed ? PlayerProfileInputBindings.WasPressed(profile, input, binding.Default.Action)
-                : PlayerProfileInputBindings.IsDown(profile, input, binding.Default.Action)) { mask |= binding.Mask; }
+            if (HasUsableRow(profile, binding.Default.Action))
+            {
+                if (pressed ? PlayerProfileInputBindings.WasPressed(profile, input, binding.Default.Action)
+                    : PlayerProfileInputBindings.IsDown(profile, input, binding.Default.Action)) { mask |= binding.Mask; }
+            }
+            else if (string.Equals(binding.Default.Device, InputBindingKeyNames.KeyboardDevice, StringComparison.OrdinalIgnoreCase)
+                && InputBindingKeyNames.TryParseKeyboardKey(binding.Default.Key, out KeyCode key)
+                && (pressed ? input.Keyboard.WasPressed(key) : input.Keyboard.IsDown(key)))
+            {
+                mask |= binding.Mask;
+            }
+            else if (string.Equals(binding.Default.Device, InputBindingKeyNames.MouseDevice, StringComparison.OrdinalIgnoreCase)
+                && InputBindingKeyNames.TryParseMouseButton(binding.Default.Key, out MouseButton button)
+                && (pressed ? input.Mouse.WasPressed(button) : input.Mouse.IsDown(button)))
+            {
+                mask |= binding.Mask;
+            }
         }
         return mask;
     }

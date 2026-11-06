@@ -60,7 +60,6 @@ public sealed partial class GameHost
         TouchButton.WalkRun => "Title_igi2_ToggleWalkRun",
         TouchButton.Prone => "Title_igi2_ToggleStandLie",
         TouchButton.PrevWeapon => "PrevWeapon",
-        TouchButton.WeaponWheel => "WeaponWheel",
         TouchButton.DropWeapon => "Title_igi2_DropWeapon",
         TouchButton.Thermal => "Title_igi2_Thermal",
         TouchButton.WalkHold => "Title_igi2_ModifyWalkRun",

@@ -679,12 +679,9 @@ public sealed class TouchControls
     {
         if (mode == TouchControlMode.Computer)
         {
-            foreach (TouchButtonSpot spot in _computerLayout)
+            if (Nearest(point.StartX, point.StartY, _computerLayout) is { } computerSpot)
             {
-                if (spot.Hit(point.StartX, point.StartY))
-                {
-                    return new Role(RoleKind.Button, spot.Button);
-                }
+                return new Role(RoleKind.Button, computerSpot.Button);
             }
         }
 
@@ -706,12 +703,9 @@ public sealed class TouchControls
             return new Role(RoleKind.Ignored, null);
         }
 
-        foreach (TouchButtonSpot spot in _layout)
+        if (Nearest(point.StartX, point.StartY, _layout) is { } spot)
         {
-            if (spot.Hit(point.StartX, point.StartY))
-            {
-                return new Role(RoleKind.Button, spot.Button, spot.Aims);
-            }
+            return new Role(RoleKind.Button, spot.Button, spot.Aims);
         }
 
         float sdx = point.StartX - StickRest.X, sdy = point.StartY - StickRest.Y;
@@ -724,6 +718,43 @@ public sealed class TouchControls
         }
 
         return new Role(stickHalf && stickFree ? RoleKind.Stick : RoleKind.Look, null);
+    }
+
+    /// <summary>The spot a finger came down on, where several overlap: the nearest centre wins, not the first in the layout.</summary>
+    /// <remarks>
+    /// The spots' hit circles are generous (radius × 1.15), and a saved custom layout can put two of
+    /// them over each other — the weapon-switch button is laid out before previous-weapon, so a first-match
+    /// tap on the previous arrow fell through to next-weapon. Nearest-match makes the tap land on the
+    /// button the finger is actually on; a tap outside every circle still finds nothing.
+    /// </remarks>
+    private static TouchButtonSpot? Nearest(float x, float y, IReadOnlyList<TouchButtonSpot> spots)
+    {
+        TouchButtonSpot? best = null;
+        float bestScore = 1f;
+        foreach (TouchButtonSpot spot in spots)
+        {
+            float score;
+            if (spot.Card)
+            {
+                if (!spot.Hit(x, y)) { continue; }
+                score = 0.5f;
+            }
+            else
+            {
+                float dx = x - spot.Centre.X, dy = y - spot.Centre.Y;
+                float reach = spot.Radius * 1.15f;
+                score = MathF.Sqrt((dx * dx) + (dy * dy)) / reach;
+                if (score > 1f) { continue; }
+            }
+
+            if (best is null || score < bestScore)
+            {
+                best = spot;
+                bestScore = score;
+            }
+        }
+
+        return best;
     }
 
     private void LayOut(LayoutContext context)
@@ -802,11 +833,11 @@ public sealed class TouchControls
         _layout.Add(new TouchButtonSpot(TouchButton.Weapon, ResolvePos(TouchElementId.WeaponCard, defWeapon), Px(ButtonRadius) * Scale(TouchElementId.WeaponCard), ElementId: TouchElementId.WeaponCard));
         _layout.Add(new TouchButtonSpot(TouchButton.Use, ResolvePos(TouchElementId.Use, defUse), Px(SmallRadius) * Scale(TouchElementId.Use), ElementId: TouchElementId.Use));
 
-        // Weapon selection around the weapon button: previous weapon above it, the wheel
-        // and drop to either side. Previous and wheel are shared actions, so they stay
-        // under every title; dropping is I.G.I. 2's own action.
+        // Weapon selection around the weapon button: previous weapon above it. The wheel is
+        // not laid out: it only opens and draws under the remastered HUD, which Android runs
+        // with off, so its button would sit there dead — it comes back with a standalone
+        // wheel draw, and next/previous weapon cover switching meanwhile.
         _layout.Add(new TouchButtonSpot(TouchButton.PrevWeapon, ResolvePos(TouchElementId.PrevWeapon, new UiVec2(safe.X + (safe.Width * 0.5f), safe.Bottom - Px(410f))), Px(SmallRadius) * Scale(TouchElementId.PrevWeapon), ElementId: TouchElementId.PrevWeapon));
-        _layout.Add(new TouchButtonSpot(TouchButton.WeaponWheel, ResolvePos(TouchElementId.WeaponWheel, new UiVec2(safe.X + (safe.Width * 0.5f) - Px(170f), safe.Bottom - Px(90f))), Px(SmallRadius) * Scale(TouchElementId.WeaponWheel), ElementId: TouchElementId.WeaponWheel));
         if (ShowIgi2Buttons)
         {
             _layout.Add(new TouchButtonSpot(TouchButton.DropWeapon, ResolvePos(TouchElementId.DropWeapon, new UiVec2(safe.X + (safe.Width * 0.5f) + Px(170f), safe.Bottom - Px(90f))), Px(SmallRadius) * Scale(TouchElementId.DropWeapon), ElementId: TouchElementId.DropWeapon));
