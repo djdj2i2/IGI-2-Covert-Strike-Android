@@ -491,9 +491,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         // The loading art ships in the APK and is read out of the files directory by the
         // managed host; copy it on every launch so an update over an existing install
         // refreshes it too — the Assets folder itself is only extracted on first install.
+        // JPEG on purpose: the managed sprite loader decodes JPEG, not PNG.
         copySingleAssetSafe(
-            "public/Assets/menu_images/igi2-loading.png",
-            new File(new File(filesDir, "Assets"), "menu_images/igi2-loading.png"));
+            "public/Assets/menu_images/igi2-loading-title.jpg",
+            new File(new File(filesDir, "Assets"), "menu_images/igi2-loading-title.jpg"));
 
         isExtracted = true;
 

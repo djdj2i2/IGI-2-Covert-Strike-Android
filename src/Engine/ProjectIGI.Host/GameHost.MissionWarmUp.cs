@@ -62,16 +62,19 @@ public sealed partial class GameHost
     private string _loadingMissionName = string.Empty;
     private string _loadingMissionDescription = string.Empty;
 
-    /// <summary>The loading art Ray sent (Jones over a dark street), drawn as the load's backdrop.</summary>
+    /// <summary>The loading art Ray sent (the I.G.I. 2 title art), drawn as the load's backdrop.</summary>
     private SpriteResource? _loadingArt;
     private bool _loadingArtAttempted;
 
     /// <summary>Loads the loading art out of the app's own files.</summary>
     /// <remarks>
-    /// The art is Ray's I.G.I. 2 render, not retail data, so it ships in the APK under
-    /// <c>public/Assets/menu_images/igi2-loading.png</c>; MainActivity extracts it into the app's
+    /// The art is Ray's I.G.I. 2 title art, not retail data, so it ships in the APK under
+    /// <c>public/Assets/menu_images/igi2-loading-title.jpg</c>; MainActivity extracts it into the app's
     /// files directory and refreshes it on every launch, so an update over an existing install gets
-    /// it too. The old per-mission briefing sprites (<c>mission{id}.spr</c> in
+    /// it too. It is a JPEG on purpose: <see cref="SpriteLoader"/> decodes JPEG, ILFF fonts and LOOP
+    /// sprites, but not PNG — the previous art shipped as a PNG (<c>igi2-loading.png</c>) and its
+    /// decode always threw, so the load stood on its dark background even though the file was found.
+    /// The old per-mission briefing sprites (<c>mission{id}.spr</c> in
     /// <c>LOCAL:menusystem/missionsprites.res</c>) were blurry upscaled thumbnails, not loading art
     /// — they are gone. When the art is missing the dark background stands on its own, never a
     /// sprite and never the old bundled splash. Linear filtering: the art is a photographic render
@@ -89,9 +92,11 @@ public sealed partial class GameHost
         string userDir = SettingsPaths.GetUserDirectory();
         string[] paths =
         [
-            Path.Combine(userDir, "Assets", "menu_images", "igi2-loading.png"),
-            Path.Combine(userDir, "menu_images", "igi2-loading.png"),
-            Path.Combine(userDir, "managed", "Assets", "menu_images", "igi2-loading.png"),
+            Path.Combine(userDir, "Assets", "menu_images", "igi2-loading-title.jpg"),
+            Path.Combine(userDir, "menu_images", "igi2-loading-title.jpg"),
+            Path.Combine(userDir, "managed", "Assets", "menu_images", "igi2-loading-title.jpg"),
+            "/data/user/0/com.projectigi2.app/files/Assets/menu_images/igi2-loading-title.jpg",
+            "/data/user/0/com.projectigi2.app/files/managed/Assets/menu_images/igi2-loading-title.jpg",
         ];
 
         foreach (string path in paths)
@@ -105,7 +110,7 @@ public sealed partial class GameHost
 
                 _loadingArt = SpriteResource.Upload(
                     _device,
-                    SpriteLoader.Load(File.ReadAllBytes(path), "igi2-loading.png"),
+                    SpriteLoader.Load(File.ReadAllBytes(path), "igi2-loading-title.jpg"),
                     TextureFilter.Linear);
                 _logger.Information("Mission", $"Loaded mission load art from: {path}.");
                 return _loadingArt;
