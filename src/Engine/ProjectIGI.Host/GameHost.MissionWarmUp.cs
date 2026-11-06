@@ -1,10 +1,11 @@
 using System.IO;
+using ProjectIGI.Core.Configuration;
 using ProjectIGI.Core.Diagnostics;
 using ProjectIGI.Core.Graphics;
 using ProjectIGI.Core.Numerics;
-using ProjectIGI.Formats.Ilff;
 using ProjectIGI.Formats.Sprites;
 using ProjectIGI.Frontend;
+using ProjectIGI.Game.Menus;
 using ProjectIGI.Game.World;
 using ProjectIGI.Host.Lighting;
 using ProjectIGI.Host.Menu;
@@ -57,68 +58,103 @@ public sealed partial class GameHost
     private MissionDescriptor? _loadingMission;
     private MissionInfo? _loadingInfo;
 
-    /// <summary>The loading mission's briefing picture, drawn as the load's backdrop.</summary>
-    private SpriteResource? _loadingBriefing;
-    private bool _loadingBriefingAttempted;
-    private int _loadingBriefingMissionId = -1;
+    /// <summary>The loading mission's name and description for the load screen, resolved when the load begins.</summary>
+    private string _loadingMissionName = string.Empty;
+    private string _loadingMissionDescription = string.Empty;
 
-    /// <summary>Loads the loading mission's briefing picture out of the retail missionsprites archive.</summary>
+    /// <summary>The loading art Ray sent (Jones over a dark street), drawn as the load's backdrop.</summary>
+    private SpriteResource? _loadingArt;
+    private bool _loadingArtAttempted;
+
+    /// <summary>Loads the loading art out of the app's own files.</summary>
     /// <remarks>
-    /// The old splash was a bundled OpenIGI <c>loading.png</c> / <c>boot-bg.png</c> shipped in the APK;
-    /// the authentic art is the mission's own briefing sprite (<c>mission{id}.spr</c> in
-    /// <c>LOCAL:menusystem/missionsprites.res</c>), the same picture the mission screen shows. The
-    /// retail <c>loadingscreen</c> resource script would hold the true loading art, but it is not in
-    /// hand — this is the closest authentic picture the game data actually carries.
+    /// The art is Ray's I.G.I. 2 render, not retail data, so it ships in the APK under
+    /// <c>public/Assets/menu_images/igi2-loading.png</c>; MainActivity extracts it into the app's
+    /// files directory and refreshes it on every launch, so an update over an existing install gets
+    /// it too. The old per-mission briefing sprites (<c>mission{id}.spr</c> in
+    /// <c>LOCAL:menusystem/missionsprites.res</c>) were blurry upscaled thumbnails, not loading art
+    /// — they are gone. When the art is missing the dark background stands on its own, never a
+    /// sprite and never the old bundled splash. Linear filtering: the art is a photographic render
+    /// shown fullscreen, not 1:1 pixel art.
     /// </remarks>
-    private SpriteResource? GetLoadingBriefing()
+    private SpriteResource? GetLoadingArt()
     {
-        int id = _loadingMission?.Id ?? -1;
-        if (_loadingBriefingAttempted && _loadingBriefingMissionId == id)
+        if (_loadingArtAttempted)
         {
-            return _loadingBriefing;
+            return _loadingArt;
         }
 
-        if (_loadingBriefing is not null && _loadingBriefingMissionId != id)
+        _loadingArtAttempted = true;
+
+        string userDir = SettingsPaths.GetUserDirectory();
+        string[] paths =
+        [
+            Path.Combine(userDir, "Assets", "menu_images", "igi2-loading.png"),
+            Path.Combine(userDir, "menu_images", "igi2-loading.png"),
+            Path.Combine(userDir, "managed", "Assets", "menu_images", "igi2-loading.png"),
+        ];
+
+        foreach (string path in paths)
         {
-            _loadingBriefing.Dispose();
-            _loadingBriefing = null;
+            try
+            {
+                if (!File.Exists(path))
+                {
+                    continue;
+                }
+
+                _loadingArt = SpriteResource.Upload(
+                    _device,
+                    SpriteLoader.Load(File.ReadAllBytes(path), "igi2-loading.png"),
+                    TextureFilter.Linear);
+                _logger.Information("Mission", $"Loaded mission load art from: {path}.");
+                return _loadingArt;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning("Mission", $"Failed to load mission load art from {path}: {ex.Message}");
+            }
         }
 
-        _loadingBriefingAttempted = true;
-        _loadingBriefingMissionId = id;
+        _logger.Warning("Mission", "No mission load art found; the load stands on its dark background.");
+        return null;
+    }
+
+    /// <summary>Resolves the loading mission's name and description for the load screen.</summary>
+    /// <remarks>
+    /// The same source the mission screen reads: the menu's configuration through
+    /// <c>IMenuMissionStats</c>, which for I.G.I. 2 answers with Ray's corrected texts and falls
+    /// back to the string table for a mission with none. The name is the check the stats are this
+    /// mission's, not the one before it — the corrected names match the archive's, so a mismatch
+    /// means stale, and the fallback below is the right text rather than another mission's. The
+    /// menu manager is still in the loop's task tree while a load runs: leaving the menu only turns
+    /// MenuMode off, it does not tear the manager down.
+    /// </remarks>
+    private void ResolveLoadingMissionText()
+    {
+        _loadingMissionName = string.Empty;
+        _loadingMissionDescription = string.Empty;
 
         if (_loadingMission is not { } mission)
         {
-            return null;
+            return;
         }
 
-        const string archivePath = "LOCAL:menusystem/missionsprites.res";
-        try
+        string retailName = _loadingInfo?.Name ?? _menuStrings?.Get(mission.Name) ?? mission.Name;
+        string retailDescription = _loadingInfo?.Description ?? _menuStrings?.Get(mission.Description) ?? mission.Description;
+
+        MenuManagerTask? manager = _loop.Tasks.Root.Descendants().OfType<MenuManagerTask>().FirstOrDefault();
+        if (manager?.Configuration is IMenuMissionStats stats
+            && stats.TryGetActiveMissionStats(out string statsName, out string statsDescription)
+            && string.Equals(statsName, retailName, StringComparison.OrdinalIgnoreCase))
         {
-            if (!_fileSystem.Exists(archivePath))
-            {
-                _logger.Warning("Mission", $"No mission briefing art: '{archivePath}' is not in the game data.");
-                return null;
-            }
-
-            IresArchive archive = _fileSystem.ReadArchive(archivePath);
-            IresEntry? entry = archive.FindBody(mission.BriefingSprite)
-                ?? archive.FindBody($"mission{mission.Id}.spr");
-            if (entry is null)
-            {
-                _logger.Warning("Mission", $"No briefing sprite for mission {mission.Id} in '{archivePath}'.");
-                return null;
-            }
-
-            _loadingBriefing = SpriteResource.Upload(_device, SpriteLoader.Load(entry.Data, entry.Name));
-            _logger.Information("Mission", $"Loaded mission load art from '{archivePath}': {entry.Name}.");
-        }
-        catch (Exception ex)
-        {
-            _logger.Warning("Mission", $"Failed to load briefing art for mission {mission.Id}: {ex.Message}");
+            _loadingMissionName = statsName;
+            _loadingMissionDescription = statsDescription;
+            return;
         }
 
-        return _loadingBriefing;
+        _loadingMissionName = retailName;
+        _loadingMissionDescription = retailDescription;
     }
 
     /// <summary>How many of the blocking load's stages have finished, for the bar while it blocks.</summary>
@@ -367,6 +403,10 @@ public sealed partial class GameHost
     {
         _loadingMission = mission;
         _loadingInfo = _shellMissions?.FirstOrDefault(m => m.Id == mission.Id);
+        _loadingArt?.Dispose();
+        _loadingArt = null;
+        _loadingArtAttempted = false;
+        ResolveLoadingMissionText();
         _loadStageIndex = 0;
         _warmUpFramesDrawn = 0;
         _lastWarmUpMilliseconds = _loop.TimeSource.Milliseconds;
@@ -521,7 +561,7 @@ public sealed partial class GameHost
         _scheduler.Flush();
     }
 
-    /// <summary>Paints the loading screen: the loading mission's retail briefing picture, its name, and the bottom progress bar.</summary>
+    /// <summary>Paints the loading screen: Ray's I.G.I. 2 art, the mission's name and description, and the bottom progress bar.</summary>
     /// <param name="batch">The 2D batch, not begun.</param>
     private void PaintLoadingScreen(SpriteBatch batch)
     {
@@ -545,14 +585,14 @@ public sealed partial class GameHost
         // 1. Deep authentic IGI tactical black background
         painter.FillRect(new UiRect(0f, 0f, width, height), Bgra32.FromRgb(8, 10, 18));
 
-        // 2. Fullscreen: the loading mission's own retail briefing picture. When the picture
-        // cannot be found the dark background stands on its own — never the old bundled splash.
-        if (GetLoadingBriefing() is { } briefing)
+        // 2. Fullscreen: Ray's I.G.I. 2 art. When the art cannot be found the dark background
+        // stands on its own — never a blurry sprite, never the old bundled splash.
+        if (GetLoadingArt() is { } art)
         {
-            briefing.DrawStretched(batch, 0, new RectF(0f, 0f, width, height), Bgra32.White, BlendMode.Opaque);
+            art.DrawStretched(batch, 0, new RectF(0f, 0f, width, height), Bgra32.White, BlendMode.Opaque);
         }
 
-        // 3. Classic Authentic IGI Phosphor Green Bottom Progress Bar
+        // 3. The bottom progress bar's geometry, needed to place the text block above it.
         Bgra32 brightGreen = Bgra32.FromRgb(80, 160, 255); // #39e365
         float barMargin = 32f * scale;
         float barWidth = width - (barMargin * 2f);
@@ -560,6 +600,80 @@ public sealed partial class GameHost
         float barY = height - (20f * scale) - barHeight;
         float progress = Math.Clamp(_warmUp.Progress, 0.05f, 1f);
 
+        // 4. The text block, stacked from the bar upward: kicker, name, rule, description.
+        // Laid out first so the scrim behind it knows where the block starts.
+        float left = width * 0.085f;
+        float labelY = barY - (17f * scale);
+        float labelSize = 13f * scale;
+        float blockTop = labelY;
+        float kickerTop = 0f;
+        float kickerSize = 0f;
+        float kickerHeight = 0f;
+        float nameTop = 0f;
+        float nameSize = 0f;
+        float ruleTop = 0f;
+        float descTop = 0f;
+        float bodySize = 0f;
+        float lineHeight = 0f;
+        List<string> descLines = [];
+        string title = string.Empty;
+        string kicker = string.Empty;
+        if (_shellType is { } type)
+        {
+            title = _loadingMissionName.ToUpperInvariant();
+            kickerSize = 13f * scale;
+            kickerHeight = type.Mono.LineHeight(kickerSize);
+            bodySize = 20f * scale;
+            lineHeight = type.Body.LineHeight(bodySize) * 1.15f;
+
+            if (_loadingMissionDescription.Length > 0)
+            {
+                descLines = WrapLines(type.Body, _loadingMissionDescription, bodySize, width * 0.62f, maxLines: 4);
+            }
+
+            if (title.Length > 0)
+            {
+                nameSize = 72f * scale;
+                float fit = MathF.Min(1f, (width - (left * 2f)) / MathF.Max(1f, UiPainter.MeasureLabel(type.Display, title, nameSize, 0.01f)));
+                nameSize *= fit;
+                float nameHeight = nameSize * 0.85f;
+
+                float labelsTop = labelY;
+                float descBottom = labelsTop - (16f * scale);
+                descTop = descBottom - (descLines.Count * lineHeight);
+                if (descLines.Count > 0)
+                {
+                    ruleTop = descTop - (20f * scale);
+                    nameTop = ruleTop - (12f * scale) - nameHeight;
+                }
+                else
+                {
+                    nameTop = labelsTop - (16f * scale) - nameHeight;
+                }
+
+                kickerTop = nameTop - (8f * scale) - kickerHeight;
+                kicker = _loadingInfo is { } info
+                    ? FormattableString.Invariant($"MISSION {info.Number:00}")
+                    : "MISSION";
+                blockTop = kickerTop;
+            }
+        }
+
+        // 5. A dark scrim over the art's lower half, so the text reads over the picture: flat
+        // and dark, the way the menu's own panels are — no glass, no glow.
+        if (_shellType is not null && title.Length > 0)
+        {
+            float scrimTop = MathF.Max(0f, blockTop - (28f * scale));
+            Span<UI.Drawing.UiGradientStop> scrim =
+            [
+                new(0f, new Bgra32(8, 10, 18, 0)),
+                new(0.45f, new Bgra32(8, 10, 18, 110)),
+                new(1f, new Bgra32(8, 10, 18, 235)),
+            ];
+            painter.FillGradient(new UiRect(0f, scrimTop, width, height - scrimTop), scrim, UI.Drawing.UiGradientDirection.Vertical);
+        }
+
+        // 6. Classic Authentic IGI Phosphor Green Bottom Progress Bar
         // Progress bar background track & border
         painter.FillRect(new UiRect(barMargin, barY, barWidth, barHeight), Bgra32.FromRgb(15, 28, 55));
         painter.FillRect(new UiRect(barMargin - 1f, barY - 1f, barWidth + 2f, 1f), new Bgra32(120, 180, 255, 100));
@@ -579,20 +693,33 @@ public sealed partial class GameHost
             painter.FillRect(new UiRect(glowLeft, barY, glowRight - glowLeft, barHeight), Bgra32.White);
         }
 
-        // 6. Labels above the progress bar
+        // 7. The mission block and the labels above the progress bar.
         if (_shellType is { } st)
         {
-            float labelY = barY - (17f * scale);
-            float labelSize = 13f * scale;
-
-            // Centred above the bar: the mission being loaded.
-            string missionName = (_loadingInfo?.Name
-                ?? (_loadingMission is { } loading ? _menuStrings?.Get(loading.Name) ?? loading.Name : string.Empty))
-                .ToUpperInvariant();
-            if (missionName.Length > 0)
+            if (title.Length > 0)
             {
-                float nameW = st.Mono.MeasureWidth(missionName, labelSize);
-                painter.DrawText(st.Mono, missionName, new UiVec2((width - nameW) / 2f, labelY - (24f * scale)), labelSize, Bgra32.FromRgb(180, 205, 240));
+                // "MISSION 08 —— DEPLOYING", letterspaced, in the accent.
+                UiVec2 pen = painter.DrawLabel(st.Mono, kicker, new UiVec2(left, kickerTop), kickerSize, CardAccent, 0.28f);
+                float ruleX = pen.X + (16f * scale);
+                painter.FillRect(new UiRect(ruleX, kickerTop + (kickerHeight * 0.5f), 48f * scale, MathF.Max(1f, scale)), UiPalette.AccentAt(0.6f));
+                painter.DrawLabel(st.Mono, "DEPLOYING", new UiVec2(ruleX + (64f * scale), kickerTop), kickerSize, CardMuted, 0.28f);
+
+                // The name, in the title face.
+                var titleBox = new UiRect(left, nameTop, width, nameSize * 0.85f);
+                painter.DrawLabel(st.Display, title, new UiVec2(left, UiRowStyle.CapsCenterY(st.Display, nameSize, titleBox)), nameSize, CardWhite, 0.01f);
+
+                // A hairline under the name, and the description under it.
+                if (descLines.Count > 0)
+                {
+                    painter.FillRect(new UiRect(left, ruleTop, MathF.Min(width * 0.18f, 300f * scale), 2f * scale), CardAccent);
+
+                    float y = descTop;
+                    foreach (string line in descLines)
+                    {
+                        painter.DrawText(st.Body, line, new UiVec2(left, y), bodySize, UiPalette.TextBody);
+                        y += lineHeight;
+                    }
+                }
             }
 
             // Left: stage / status label
