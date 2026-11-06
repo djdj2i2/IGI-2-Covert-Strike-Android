@@ -59,6 +59,7 @@ public sealed class RetailMenuHost : IRetailMenuPresenter
             request.ExtraArchives)
         {
             Scale = request.Scale,
+            Style = request.Style,
         };
     }
 
