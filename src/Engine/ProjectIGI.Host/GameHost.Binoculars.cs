@@ -63,10 +63,27 @@ public sealed partial class GameHost
             return;
         }
 
+        // While the thermal goggles are up the marks are the TID's: living hostiles glow
+        // yellow, the player's side stays green, and the dead — cold — are left out.
+        bool thermal = optics.IsInfrared;
         _titleMarked.Clear();
         foreach (TitleBinocularContact contact in optics.BinocularContacts)
         {
-            _titleMarked[contact.Body] = contact.Marker;
+            BinocularMarkerColor marker = contact.Marker;
+            if (thermal)
+            {
+                if (marker == BinocularMarkerColor.Disabled)
+                {
+                    continue;
+                }
+
+                if (marker == BinocularMarkerColor.Hostile)
+                {
+                    marker = BinocularMarkerColor.Thermal;
+                }
+            }
+
+            _titleMarked[contact.Body] = marker;
         }
 
         if (_titleMarked.Count > 0)

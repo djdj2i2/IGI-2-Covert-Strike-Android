@@ -15,11 +15,12 @@ public static class BinocularMarking
 {
     /// <summary>The glow a marker takes when the highlight is not drawn in the silhouette style.</summary>
     /// <param name="marker">The detector's class of contact.</param>
-    /// <returns>Red for a hostile, green for anyone else, blue for one out of the fight.</returns>
+    /// <returns>Red for a hostile, green for anyone else, blue for one out of the fight — yellow for one seen in infrared.</returns>
     public static Bgra32 Glow(BinocularMarkerColor marker) => marker switch
     {
         BinocularMarkerColor.Team => Bgra32.FromRgba(96, 220, 120, 200),
         BinocularMarkerColor.Disabled => Bgra32.FromRgba(96, 150, 255, 200),
+        BinocularMarkerColor.Thermal => Bgra32.FromRgba(255, 214, 0, 210),
         _ => Bgra32.FromRgba(255, 72, 72, 210),
     };
 
@@ -30,6 +31,9 @@ public static class BinocularMarking
     {
         BinocularMarkerColor.Team => SilhouetteGroup.Team,
         BinocularMarkerColor.Disabled => SilhouetteGroup.Disabled,
+        // The thermal marker never reaches a silhouette: Draw always glows it (the
+        // silhouette pass has no yellow group), so this arm is only a fallback.
+        BinocularMarkerColor.Thermal => SilhouetteGroup.Hostile,
         _ => SilhouetteGroup.Hostile,
     };
 
@@ -49,13 +53,15 @@ public static class BinocularMarking
         float radiusPixels)
     {
         ArgumentNullException.ThrowIfNull(device);
-        if (HudCVars.BinocularSilhouette.Value)
+        // The thermal figure is defined as the yellow glow: the silhouette pass has no
+        // yellow group, so a thermal marker always takes the glow, whatever the setting asks for.
+        if (marker == BinocularMarkerColor.Thermal || !HudCVars.BinocularSilhouette.Value)
         {
-            device.DrawSilhouette(mesh, ranges, modelView, Group(marker));
+            device.DrawOutline(mesh, ranges, modelView, Glow(marker), radiusPixels, throughWalls: true);
         }
         else
         {
-            device.DrawOutline(mesh, ranges, modelView, Glow(marker), radiusPixels, throughWalls: true);
+            device.DrawSilhouette(mesh, ranges, modelView, Group(marker));
         }
     }
 }
