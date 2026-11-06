@@ -3,6 +3,7 @@ using ProjectIGI.Presentation.Rendering;
 using ProjectIGI.Engine.Vfs;
 using ProjectIGI.Formats.Ilff;
 using ProjectIGI.Formats.Sprites;
+using ProjectIGI.Formats.Textures;
 using ProjectIGI.Rendering;
 using ProjectIGI.Game.Igi2;
 using ProjectIGI.Game.Igi2.World;
@@ -56,7 +57,7 @@ public sealed class Igi2SpriteResources : IDisposable
         if ((colon < 0 ? _entries : _paths).TryGetValue(key, out IresEntry? entry))
         {
             try { sprite = SpriteResource.Upload(_device, SpriteLoader.Load(entry.Data, entry.Name)); }
-            catch (Exception ex) when (ex is InvalidDataException or NotSupportedException or EngineFatalException)
+            catch (Exception ex) when (ex is InvalidDataException or NotSupportedException or EngineFatalException or TextureFormatException)
             {
                 _logger.Warning("igi2.hud", $"Could not load {name}: {ex.Message}");
             }
@@ -83,7 +84,7 @@ public sealed class Igi2SpriteResources : IDisposable
                 texture = _device.CreateTexture(
                     new TextureDescription(image.Width, image.Height, 1, TextureFilter.Linear, TextureAddressMode.Clamp), image.Pixels);
             }
-            catch (Exception ex) when (ex is InvalidDataException or NotSupportedException or EngineFatalException)
+            catch (Exception ex) when (ex is InvalidDataException or NotSupportedException or EngineFatalException or TextureFormatException)
             {
                 _logger.Warning("igi2.hud", $"Could not load {name}: {ex.Message}");
             }
