@@ -12,9 +12,12 @@ namespace ProjectIGI.Formats.Sprites;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Four container shapes are accepted: an ILFF <c>FONT</c> container and <c>"LOOP"</c> versions 1, 7
-/// and 9. Versions 5 and 10 exist but the original refuses them outright
-/// (<c>"The font '%s' must be packed."</c>), and so does this loader — no retail file uses them.
+/// Five container shapes are accepted: an ILFF <c>FONT</c> container and <c>"LOOP"</c> versions 1, 7
+/// and 9 — plus a plain JPEG picture, which I.G.I. 2 ships its menu backdrop as. The original hands
+/// such a file to the platform's image loader rather than its own sprite reader, so this loader
+/// decodes it with <see cref="JpegImage"/> instead. Versions 5 and 10 exist but the original refuses
+/// them outright (<c>"The font '%s' must be packed."</c>), and so does this loader — no retail file
+/// uses them.
 /// </para>
 /// <para>
 /// Field offsets are those the original loader reads. Where the three <c>"LOOP"</c> versions disagree
@@ -44,6 +47,11 @@ public static class SpriteLoader
             }
 
             throw new TextureFormatException($"Invalid sprite file '{name}': ILFF form '{container.FormType}' is not a font.");
+        }
+
+        if (JpegImage.IsJpeg(span))
+        {
+            return LoadJpeg(span, name);
         }
 
         if (!TexFile.IsLoopAsset(span))
@@ -126,6 +134,38 @@ public static class SpriteLoader
             palette: null,
             characterMap: null,
             layout);
+    }
+
+    /// <summary>Loads a JPEG picture as a single-frame tiled sprite.</summary>
+    /// <remarks>
+    /// I.G.I. 2's menu backdrop is a plain 640×480 JPEG, not a sprite container: the original hands
+    /// it to the platform's image loader, so this loader decodes it with <see cref="JpegImage"/> and
+    /// wraps the pixels the way <see cref="LoadPack"/> wraps a packed picture — one frame over the
+    /// whole image, a 1×1 tile grid so <c>DrawTiled</c> stretches it across the screen, and the
+    /// single-frame flag. The kind is <see cref="SpriteKind.Loop1"/>: a single frame, and nothing
+    /// reads the kind to tell container bytes apart.
+    /// </remarks>
+    private static SpriteAsset LoadJpeg(ReadOnlySpan<byte> data, string name)
+    {
+        TextureImage image = JpegImage.Read(data);
+
+        SpriteFrame[] frames =
+        [
+            new SpriteFrame(0, image.Width, image.Height, 0, 0, 0, 0, 0.0f, 0.0f, 1.0f, 1.0f),
+        ];
+
+        return new SpriteAsset(
+            name,
+            SpriteKind.Loop1,
+            [image],
+            frames,
+            image.Width,
+            image.Height,
+            0,
+            0x10000u,
+            palette: null,
+            characterMap: null,
+            new SpriteTileLayout(1, 1, [1]));
     }
 
     /// <summary>Loads an ILFF <c>FONT</c> container.</summary>

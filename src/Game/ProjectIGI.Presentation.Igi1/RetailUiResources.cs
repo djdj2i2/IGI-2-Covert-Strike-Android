@@ -1,6 +1,7 @@
 using ProjectIGI.Core.Diagnostics;
 using ProjectIGI.Formats.Ilff;
 using ProjectIGI.Formats.Sprites;
+using ProjectIGI.Formats.Textures;
 using ProjectIGI.Presentation.Rendering;
 using ProjectIGI.Rendering;
 
@@ -149,7 +150,18 @@ internal sealed class RetailUiResources : IDisposable
             string decodeName = _options.MatchStem ? entry.Name : name;
             if (_options.LogCategory is not { } category)
             {
-                resource = SpriteResource.Upload(_device, SpriteLoader.Load(entry.Data, decodeName));
+                try
+                {
+                    resource = SpriteResource.Upload(_device, SpriteLoader.Load(entry.Data, decodeName));
+                }
+                catch (TextureFormatException ex)
+                {
+                    // The format exception derives directly from Exception, so it escapes the
+                    // InvalidDataException/NotSupportedException catch below; a single unreadable
+                    // sprite must not kill the menu that asked for it. This branch is the menus'
+                    // — only MenuRenderer builds options without a log category.
+                    _logger.Warning("Menu", $"Could not read {failureSubject}'{name}': {ex.Message}");
+                }
             }
             else
             {
@@ -158,7 +170,7 @@ internal sealed class RetailUiResources : IDisposable
                     SpriteAsset asset = SpriteLoader.Load(entry.Data, decodeName);
                     resource = SpriteResource.Upload(_device, asset);
                 }
-                catch (Exception ex) when (ex is InvalidDataException or NotSupportedException)
+                catch (Exception ex) when (ex is InvalidDataException or NotSupportedException or TextureFormatException)
                 {
                     _logger.Warning(category, $"Could not read {failureSubject}'{name}': {ex.Message}");
                 }
@@ -202,8 +214,11 @@ internal sealed record RetailUiResourceOptions
 
     /// <summary>Gets the log category an undecodable sprite is reported under.</summary>
     /// <remarks>
-    /// <see langword="null"/> lets the decode failure propagate to the caller, as the menus always have;
-    /// otherwise the sprite is logged, cached as missing, and drawn as nothing.
+    /// <see langword="null"/> lets most decode failures propagate to the caller, as the menus always
+    /// have — except a <see cref="TextureFormatException"/>, which is contained in both paths: it
+    /// derives directly from <see cref="Exception"/> and would otherwise escape the catch below, so
+    /// one unreadable sprite would kill the menu that asked for it. Otherwise the sprite is logged,
+    /// cached as missing, and drawn as nothing.
     /// </remarks>
     public string? LogCategory { get; init; }
 

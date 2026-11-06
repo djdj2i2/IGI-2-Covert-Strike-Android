@@ -36,7 +36,8 @@ public sealed class MenuRenderer : IDisposable
     public int EffectiveScale => _scale;
 
     // The menu's archive, then the extra archives, searched in that order. Task parameters name a bare
-    // file, so a sprite is matched by its stem; a sprite that will not decode throws, as it always has.
+    // file, so a sprite is matched by its stem; a sprite whose bytes are not a format the loader knows
+    // is skipped and drawn as nothing, while other decode failures still throw.
     private readonly RetailUiResources _resources;
     private readonly MenuStringTable _strings;
 
