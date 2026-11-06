@@ -652,6 +652,16 @@ public sealed class Igi2Gameplay : ITitleGameplay
             weapons.RunWeaponScript(inventory, player.WeaponScript);
         }
 
+        // The binoculars and the thermal goggles are standard kit, not mission
+        // pickups: mission 1's player starts with both, and their keys raise
+        // them over whatever is in hand. A weapon script that doesn't grant
+        // them leaves their buttons holding keys the player never sees — the
+        // thermal one silently does nothing, because Activate refuses a weapon
+        // that isn't carried. Granting them here is a no-op when the script
+        // already did: EnableWeaponType leaves a carried weapon exactly as it is.
+        inventory.EnableWeaponType(Igi2HumanPlayer.BinocularsWeaponId, addAmmo: false);
+        inventory.EnableWeaponType(Igi2HumanPlayer.ThermalWeaponId, addAmmo: false);
+
         return new Igi2PlayerWeapons(inventory, weapons.FireTaskTypes, clips);
     }
 

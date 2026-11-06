@@ -246,7 +246,6 @@ public sealed class TouchControls
     public const float StickReach = 120f;
 
     private const float FireRadius = 80f;
-    private const float LeftFireRadius = 68f;
     private const float ButtonRadius = 62f;
     private const float SmallRadius = 50f;
     private const float CornerRadius = 36f;
@@ -810,21 +809,15 @@ public sealed class TouchControls
         AddRound(TouchElementId.ZoomIn, TouchButton.ZoomIn, 110f, 600f, CornerRadius);
         AddRound(TouchElementId.ZoomOut, TouchButton.ZoomOut, 110f, 495f, CornerRadius);
 
-        // I.G.I. 2 stance buttons: a stack to the right of the movement stick,
-        // clear of its reach and of FireLeft. Tap to step the stance one level.
-        // Prone tops the stack, hold-to-walk sits below it; the whole column is
-        // I.G.I. 2 only and stays out of the layout under any other title.
+        // I.G.I. 2 stance buttons: a pair to the right of the movement stick,
+        // clear of its reach. Tap to step the stance one level up or down;
+        // prone is reached by stepping down from crouch, not by its own button.
+        // The pair is I.G.I. 2 only and stays out of the layout under any other title.
         if (ShowIgi2Buttons)
         {
             _layout.Add(new TouchButtonSpot(TouchButton.RaiseStance, ResolvePos(TouchElementId.StanceUp, new UiVec2(safe.X + Px(480f), safe.Bottom - Px(400f))), Px(SmallRadius) * Scale(TouchElementId.StanceUp), ElementId: TouchElementId.StanceUp));
             _layout.Add(new TouchButtonSpot(TouchButton.LowerStance, ResolvePos(TouchElementId.StanceDown, new UiVec2(safe.X + Px(480f), safe.Bottom - Px(280f))), Px(SmallRadius) * Scale(TouchElementId.StanceDown), ElementId: TouchElementId.StanceDown));
-            _layout.Add(new TouchButtonSpot(TouchButton.Prone, ResolvePos(TouchElementId.Prone, new UiVec2(safe.X + Px(480f), safe.Bottom - Px(160f))), Px(SmallRadius) * Scale(TouchElementId.Prone), ElementId: TouchElementId.Prone));
-            _layout.Add(new TouchButtonSpot(TouchButton.WalkHold, ResolvePos(TouchElementId.WalkHold, new UiVec2(safe.X + Px(480f), safe.Bottom - Px(520f))), Px(SmallRadius) * Scale(TouchElementId.WalkHold), ElementId: TouchElementId.WalkHold));
         }
-
-        // Left fire
-        UiVec2 defLeftFire = new(safe.X + Px(250f), safe.Bottom - Px(540f));
-        _layout.Add(new TouchButtonSpot(TouchButton.Fire, ResolvePos(TouchElementId.FireLeft, defLeftFire), Px(LeftFireRadius) * Scale(TouchElementId.FireLeft), ElementId: TouchElementId.FireLeft));
 
         // Weapon (round, not a wide card: the wide rectangle was awkward to tap) and Use.
         // The current weapon and ammo stay visible in the HUD's own weapon widget.
@@ -833,11 +826,10 @@ public sealed class TouchControls
         _layout.Add(new TouchButtonSpot(TouchButton.Weapon, ResolvePos(TouchElementId.WeaponCard, defWeapon), Px(ButtonRadius) * Scale(TouchElementId.WeaponCard), ElementId: TouchElementId.WeaponCard));
         _layout.Add(new TouchButtonSpot(TouchButton.Use, ResolvePos(TouchElementId.Use, defUse), Px(SmallRadius) * Scale(TouchElementId.Use), ElementId: TouchElementId.Use));
 
-        // Weapon selection around the weapon button: previous weapon above it. The wheel is
-        // not laid out: it only opens and draws under the remastered HUD, which Android runs
-        // with off, so its button would sit there dead — it comes back with a standalone
-        // wheel draw, and next/previous weapon cover switching meanwhile.
-        _layout.Add(new TouchButtonSpot(TouchButton.PrevWeapon, ResolvePos(TouchElementId.PrevWeapon, new UiVec2(safe.X + (safe.Width * 0.5f), safe.Bottom - Px(410f))), Px(SmallRadius) * Scale(TouchElementId.PrevWeapon), ElementId: TouchElementId.PrevWeapon));
+        // Drop sits beside the weapon button. The wheel is not laid out: it only
+        // opens and draws under the remastered HUD, which Android runs with off,
+        // so its button would sit there dead — it comes back with a standalone
+        // wheel draw. Previous weapon has no button (keyboard O still steps back).
         if (ShowIgi2Buttons)
         {
             _layout.Add(new TouchButtonSpot(TouchButton.DropWeapon, ResolvePos(TouchElementId.DropWeapon, new UiVec2(safe.X + (safe.Width * 0.5f) + Px(170f), safe.Bottom - Px(90f))), Px(SmallRadius) * Scale(TouchElementId.DropWeapon), ElementId: TouchElementId.DropWeapon));
