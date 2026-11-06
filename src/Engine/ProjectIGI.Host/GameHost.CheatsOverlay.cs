@@ -322,7 +322,7 @@ public sealed partial class GameHost
             DrawCheatRow(0, "INFINITE HEALTH", "Zero damage from bullets, explosions, falls and electric fences", PlayerCheatCVars.InfiniteHealth.Value);
             DrawCheatRow(1, "INFINITE AMMUNITION", "Magazines stay filled, reserves never deplete while firing", PlayerCheatCVars.InfiniteAmmo.Value);
             DrawCheatRow(2, "ALL WEAPONS", "Adds all weapons into inventory for the mission", PlayerCheatCVars.AllWeapons.Value);
-            DrawCheatRow(3, "UNLOCK ALL MISSIONS", "All 14 missions are selectable in Campaign", PlayerCheatCVars.UnlockAllLevels.Value);
+            DrawCheatRow(3, "UNLOCK ALL MISSIONS", $"All {_missions.InProgressionOrder().Count()} missions are selectable in Campaign", PlayerCheatCVars.UnlockAllLevels.Value);
 
             // Close button
             float closeW = 220f * scale;

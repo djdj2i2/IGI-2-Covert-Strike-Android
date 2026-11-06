@@ -3,6 +3,7 @@ using ProjectIGI.Game.Igi2.Humans;
 using ProjectIGI.Game.Igi2.ViewModel;
 using ProjectIGI.Game.Igi2.Weapons;
 using ProjectIGI.Game.Igi2.World;
+using ProjectIGI.Game.Player;
 
 namespace ProjectIGI.Game.Igi2.Player;
 
@@ -146,8 +147,12 @@ public sealed partial class Igi2HumanPlayer
         float gamma = firing.GammaKickback;
         CrossHairDamping = firing.CrossHairDamping;
         ActualWeaponPrecision = ((((Fpu)alpha + gamma) * KickbackSpread) + ActualWeaponPrecision).F;
-        View.PitchOffset = (((Fpu)alpha * DegreesToRadians) + View.PitchOffset).F;
-        View.YawOffset = (((Fpu)gamma * DegreesToRadians) + View.YawOffset).F;
+        if (!PlayerCheatOptions.Current.NoRecoil)
+        {
+            View.PitchOffset = (((Fpu)alpha * DegreesToRadians) + View.PitchOffset).F;
+            View.YawOffset = (((Fpu)gamma * DegreesToRadians) + View.YawOffset).F;
+        }
+
         View.OffsetDamping = firing.KickbackDamping;
     }
 

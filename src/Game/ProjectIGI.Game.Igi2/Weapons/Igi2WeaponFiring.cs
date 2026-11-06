@@ -1,6 +1,7 @@
 using ProjectIGI.Core.Numerics;
 using ProjectIGI.Engine.Tasks;
 using ProjectIGI.Game.Igi2.World;
+using ProjectIGI.Game.Player;
 
 namespace ProjectIGI.Game.Igi2.Weapons;
 
@@ -115,6 +116,14 @@ public sealed class Igi2WeaponFiring
 
     /// <summary>Gets or sets a value indicating whether reloading takes nothing from what is carried, <c>isUnlimitedAmmo</c>.</summary>
     public bool IsUnlimitedAmmo { get; set; }
+
+    /// <summary>Whether firing takes nothing from this holder: the player's infinite-ammunition cheat.</summary>
+    /// <remarks>
+    /// Soldiers and stationary guns never read the cheat — their holder is not the player — so their
+    /// own <see cref="IsUnlimitedAmmo"/> stays retail's. The option is only read on the player's path:
+    /// the holder test short-circuits first.
+    /// </remarks>
+    private bool CheatInfiniteAmmo => Owner?.IsPlayer == true && PlayerCheatOptions.Current.InfiniteAmmo;
 
     /// <summary>Gets or sets a value indicating whether the weapon fires on by itself, <c>isAutoFire</c>.</summary>
     public bool IsAutoFire { get; set; }
@@ -485,7 +494,7 @@ public sealed class Igi2WeaponFiring
                 continue;
             }
 
-            if (!IsUnlimitedAmmo)
+            if (!IsUnlimitedAmmo && !CheatInfiniteAmmo)
             {
                 if (lacking > carried.Count)
                 {
@@ -577,9 +586,9 @@ public sealed class Igi2WeaponFiring
         Igi2FireTypeAmmo ammo = weaponType.AmmoInfo(fireType, _tables);
         bool forceReload = weaponType.IsForceReload(fireType);
         Igi2AmmoItem? carried = ammo.AmmoType is { } ammoType ? _inventory.FindAmmo(ammoType.AmmoId) : null;
-        bool enough = forceReload
+        bool enough = CheatInfiniteAmmo || (forceReload
             ? ammo.AmmoType is not null ? ammo.RoundsToFire <= (carried?.Count ?? 0) : ammo.RoundsToFire == 0
-            : ammo.RoundsToFire <= item.Loaded(fireType);
+            : ammo.RoundsToFire <= item.Loaded(fireType));
         if (!enough)
         {
             _inventory.Status = Igi2WeaponStatus.Empty;
@@ -603,14 +612,22 @@ public sealed class Igi2WeaponFiring
             {
                 if (carried is not null)
                 {
-                    carried.Spend(fired);
+                    if (!CheatInfiniteAmmo)
+                    {
+                        carried.Spend(fired);
+                    }
+
                     CountShots(fireType, fired);
                 }
             }
             else
             {
-                int left = item.Loaded(fireType) - fired;
-                item.SetLoaded(fireType, left <= 0 ? 0 : left);
+                if (!CheatInfiniteAmmo)
+                {
+                    int left = item.Loaded(fireType) - fired;
+                    item.SetLoaded(fireType, left <= 0 ? 0 : left);
+                }
+
                 trigger.RoundsFired += fired;
                 CountShots(fireType, fired);
             }
@@ -656,15 +673,19 @@ public sealed class Igi2WeaponFiring
             if (weaponType.IsForceReload(fireType))
             {
                 Igi2FireTypeRounds rounds = _inventory.FireTypeRounds(_inventory.Current, fireType);
-                if (rounds.AmmoType is { } ammoType)
+                if (rounds.AmmoType is { } ammoType && !CheatInfiniteAmmo)
                 {
                     _inventory.FindAmmo(ammoType.AmmoId)?.Spend(fired);
                 }
             }
             else
             {
-                int left = item.Loaded(fireType) - fired - fired;
-                item.SetLoaded(fireType, left <= 0 ? 0 : left);
+                if (!CheatInfiniteAmmo)
+                {
+                    int left = item.Loaded(fireType) - fired - fired;
+                    item.SetLoaded(fireType, left <= 0 ? 0 : left);
+                }
+
                 _fireTypes[fireType].RoundsFired += fired;
             }
         }

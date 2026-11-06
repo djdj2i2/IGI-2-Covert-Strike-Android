@@ -21,6 +21,10 @@ public sealed class Igi2HumanDamage
     /// <summary>Gets a value indicating whether the damage has reached the limit.</summary>
     public bool IsFatal => Damage >= MaxDamage;
 
+    /// <summary>Gets or sets a value indicating whether damage is ignored entirely, the infinite-health cheat.</summary>
+    /// <remarks>Set on the player's damage only; a soldier's stays false.</remarks>
+    public bool Invulnerable { get; set; }
+
     /// <summary>Gets the damage one zone has taken, <c>atDamagePart[part].vDamage</c>.</summary>
     /// <param name="part">The zone.</param>
     /// <returns>The zone's damage.</returns>
@@ -58,6 +62,11 @@ public sealed class Igi2HumanDamage
     /// <param name="amount">The damage.</param>
     public void Add(Igi2DamagePart part, float amount)
     {
+        if (Invulnerable)
+        {
+            return;
+        }
+
         _parts[(int)part] = ((Fpu)amount + _parts[(int)part]).F;
         Damage = ((Fpu)amount + Damage).F;
     }
