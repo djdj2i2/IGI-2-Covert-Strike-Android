@@ -344,30 +344,6 @@ public static class TouchControlsRenderer
                 Line(-0.08f, 0.02f, -0.58f, 0.42f);
                 Line(0.16f, -0.36f, 0.58f, -0.02f);
                 break;
-            case TouchButton.Prone:
-                // Lying flat: head at one end, body and legs in one level line, ground below.
-                Dot(-0.68f, -0.18f, 0.2f);
-                Line(-0.48f, -0.08f, 0.72f, -0.08f);
-                Line(0.12f, -0.08f, 0.28f, 0.38f);
-                Line(-0.85f, 0.55f, 0.85f, 0.55f);
-                break;
-            case TouchButton.WalkHold:
-                // A walker, upright and unhurried: head, vertical torso, legs in a walk stride, ground below.
-                Dot(0.05f, -0.72f, 0.2f);
-                Line(0f, -0.48f, 0f, 0.12f);
-                Line(0f, 0.12f, 0.38f, 0.72f);
-                Line(0f, 0.12f, -0.38f, 0.72f);
-                Line(0f, -0.32f, 0.34f, 0.02f);
-                Line(0f, -0.32f, -0.34f, 0.02f);
-                Line(-0.7f, 0.85f, 0.7f, 0.85f);
-                break;
-            case TouchButton.PrevWeapon:
-                // Previous track: a bar and one left arrow — the "go back one" mark, not the
-                // weapon button's two-way swap arrows beside it.
-                painter.FillRect(new UiRect(c.X - (size * 0.95f), c.Y - (size * 0.36f), size * 0.18f, size * 0.72f), ink);
-                Line(-0.28f, 0f, 0.55f, 0f);
-                painter.FillTriangle(P(-0.72f, 0f), P(-0.28f, -0.36f), P(-0.28f, 0.36f), ink);
-                break;
             case TouchButton.WeaponWheel:
                 // A wheel: ring, three spokes, hub — hold it and steer to pick a weapon.
                 Ring(0f, 0f, 0.72f);
@@ -384,12 +360,16 @@ public static class TouchControlsRenderer
                 Line(-0.7f, 0.6f, 0.7f, 0.6f);
                 break;
             case TouchButton.Thermal:
-                // A sight ring with heat rising inside it: a zigzag, like the shimmer over hot ground.
-                Ring(0f, 0f, 0.72f);
-                Line(-0.42f, 0.2f, -0.21f, -0.25f);
-                Line(-0.21f, -0.25f, 0f, 0.2f);
-                Line(0f, 0.2f, 0.21f, -0.25f);
-                Line(0.21f, -0.25f, 0.42f, 0.2f);
+                // Goggles, not binoculars: two lenses joined by a bridge, with heat
+                // rising off them — readable at a glance next to the binoculars'
+                // two rings and barrels.
+                Ring(-0.42f, 0.12f, 0.36f);
+                Ring(0.42f, 0.12f, 0.36f);
+                Line(-0.08f, 0.12f, 0.08f, 0.12f);
+                Line(-0.28f, -0.28f, -0.14f, -0.62f);
+                Line(-0.14f, -0.62f, 0f, -0.28f);
+                Line(0f, -0.28f, 0.14f, -0.62f);
+                Line(0.14f, -0.62f, 0.28f, -0.28f);
                 break;
             case TouchButton.Crouch:
                 Dot(0.15f, -0.72f, 0.2f);
