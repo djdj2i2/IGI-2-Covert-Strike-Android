@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">"I.G.I. 2: Covert Strike"</string>
+    <string name="title_activity_main">"I.G.I. 2: Covert Strike"</string>
+    <string name="package_name">com.projectigi2.app</string>
+    <string name="custom_url_scheme">com.projectigi2.app</string>
+</resources>

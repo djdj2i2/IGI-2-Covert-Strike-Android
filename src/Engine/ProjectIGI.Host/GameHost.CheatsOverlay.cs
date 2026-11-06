@@ -1,0 +1,344 @@
+using ProjectIGI.Core.Configuration;
+using ProjectIGI.Core.Graphics;
+using ProjectIGI.Frontend.Screens;
+using ProjectIGI.Game.Player;
+using ProjectIGI.Host.Configuration;
+using ProjectIGI.Input;
+using ProjectIGI.Presentation.Text;
+using ProjectIGI.Rendering;
+using ProjectIGI.UI;
+using ProjectIGI.UI.Layout;
+
+namespace ProjectIGI.Host;
+
+public sealed partial class GameHost
+{
+    private bool _cheatsModalOpen;
+
+    private void UpdateCheatsOverlay(FrameLoopState state)
+    {
+        // Active strictly on the main menu landing screen
+        bool isMainMenu = _session.Mission == null && !_menuFlow.PauseMenu && state.Shell?.Stack.Top is MainMenuScreen;
+        if (!isMainMenu)
+        {
+            _cheatsModalOpen = false;
+            return;
+        }
+
+        float width = SafeWindowWidth;
+        float height = SafeWindowHeight;
+        float scale = Math.Clamp(height / 480f, 1f, 3f);
+        float gearW = 20f * scale;
+        float gearH = 20f * scale;
+        float gearX = width - gearW - (12f * scale);
+        float gearY = 12f * scale;
+
+        InputState input = _window.Input;
+        bool click = false;
+        float clickX = 0f, clickY = 0f;
+
+        // Detect touch tap
+        if (input.Touch.InUse)
+        {
+            foreach (var point in input.Touch.Points)
+            {
+                if (point.Began)
+                {
+                    click = true;
+                    clickX = point.X;
+                    clickY = point.Y;
+                    break;
+                }
+            }
+        }
+
+        // Detect mouse click
+        if (!click && input.Mouse.WasPressed(MouseButton.Left))
+        {
+            click = true;
+            clickX = input.Mouse.X;
+            clickY = input.Mouse.Y;
+        }
+
+        if (!_cheatsModalOpen)
+        {
+            // The gear itself is small (20 units), but a fingertip is not: give it a
+            // generous invisible hit area so big fingers can open the cheats modal.
+            float hit = 48f * scale;
+            float hitX = gearX + (gearW * 0.5f) - (hit * 0.5f);
+            float hitY = gearY + (gearH * 0.5f) - (hit * 0.5f);
+            if (click && clickX >= hitX && clickX <= hitX + hit && clickY >= hitY && clickY <= hitY + hit)
+            {
+                _cheatsModalOpen = true;
+                // Suppress click so menu beneath does not click Play/Exit
+                input.Mouse.SetButton(MouseButton.Left, down: false);
+            }
+
+            // Keyboard icon just under the gear: taps toggle the soft keyboard so the
+            // player can type names and other menu text even when the automatic
+            // focus detection does not fire. Same generous hit area as the gear.
+            // (The icon is 28 units, centred on the gear; see DrawCheatsOverlay.)
+            float kbW = 28f * scale;
+            float kbH = 28f * scale;
+            float kbX = gearX + ((gearW - kbW) * 0.5f);
+            float kbY = gearY + gearH + (8f * scale);
+            float kbHitX = kbX + (kbW * 0.5f) - (hit * 0.5f);
+            float kbHitY = kbY + (kbH * 0.5f) - (hit * 0.5f);
+            if (click && clickX >= kbHitX && clickX <= kbHitX + hit && clickY >= kbHitY && clickY <= kbHitY + hit)
+            {
+                KeyboardRequested = !KeyboardRequested;
+                input.Mouse.SetButton(MouseButton.Left, down: false);
+            }
+            return;
+        }
+
+        // When cheats modal is open, always suppress underlying clicks
+        input.Mouse.SetButton(MouseButton.Left, down: false);
+
+        if (!click)
+        {
+            return;
+        }
+
+        float modalW = Math.Min(700f * scale, width - (32f * scale));
+        float modalH = Math.Min(410f * scale, height - (32f * scale));
+        float modalX = (width - modalW) * 0.5f;
+        float modalY = (height - modalH) * 0.5f;
+
+        // Check if clicked outside main modal to dismiss
+        if (clickX < modalX || clickX > modalX + modalW || clickY < modalY || clickY > modalY + modalH)
+        {
+            _cheatsModalOpen = false;
+            return;
+        }
+
+        float contentY = modalY + (56f * scale);
+        float rowHeight = 62f * scale;
+        float btnW = 110f * scale;
+        float btnH = 40f * scale;
+        float btnX = modalX + modalW - btnW - (20f * scale);
+
+        // Row 0: Infinite Health
+        float r0Y = contentY;
+        if (clickX >= btnX && clickX <= btnX + btnW && clickY >= r0Y && clickY <= r0Y + btnH)
+        {
+            PlayerCheatCVars.InfiniteHealth.Value = !PlayerCheatCVars.InfiniteHealth.Value;
+            state.Console.SaveSettings();
+            HostConfiguration.Save(_configuration, _logger);
+            return;
+        }
+
+        // Row 1: Infinite Ammo
+        float r1Y = contentY + rowHeight;
+        if (clickX >= btnX && clickX <= btnX + btnW && clickY >= r1Y && clickY <= r1Y + btnH)
+        {
+            PlayerCheatCVars.InfiniteAmmo.Value = !PlayerCheatCVars.InfiniteAmmo.Value;
+            state.Console.SaveSettings();
+            HostConfiguration.Save(_configuration, _logger);
+            return;
+        }
+
+        // Row 2: All Weapons
+        float r2Y = contentY + (rowHeight * 2f);
+        if (clickX >= btnX && clickX <= btnX + btnW && clickY >= r2Y && clickY <= r2Y + btnH)
+        {
+            PlayerCheatCVars.AllWeapons.Value = !PlayerCheatCVars.AllWeapons.Value;
+            state.Console.SaveSettings();
+            HostConfiguration.Save(_configuration, _logger);
+            return;
+        }
+
+        // Row 3: Unlock All Missions
+        float r3Y = contentY + (rowHeight * 3f);
+        if (clickX >= btnX && clickX <= btnX + btnW && clickY >= r3Y && clickY <= r3Y + btnH)
+        {
+            PlayerCheatCVars.UnlockAllLevels.Value = !PlayerCheatCVars.UnlockAllLevels.Value;
+            state.Console.SaveSettings();
+            HostConfiguration.Save(_configuration, _logger);
+            return;
+        }
+
+        // Close button at bottom
+        float closeW = 220f * scale;
+        float closeH = 42f * scale;
+        float closeX = modalX + ((modalW - closeW) * 0.5f);
+        float closeY = modalY + modalH - closeH - (14f * scale);
+        if (clickX >= closeX && clickX <= closeX + closeW && clickY >= closeY && clickY <= closeY + closeH)
+        {
+            _cheatsModalOpen = false;
+        }
+    }
+
+    private void DrawCheatsOverlay(FrameLoopState state)
+    {
+        bool isMainMenu = _session.Mission == null && !_menuFlow.PauseMenu && state.Shell?.Stack.Top is MainMenuScreen;
+        if (!isMainMenu)
+        {
+            return;
+        }
+
+        _shellType ??= UiFontLibrary.Typography(_device);
+
+        float width = SafeWindowWidth;
+        float height = SafeWindowHeight;
+        float scale = Math.Clamp(height / 480f, 1f, 3f);
+        float gearW = 20f * scale;
+        float gearH = 20f * scale;
+        float gearX = width - gearW - (12f * scale);
+        float gearY = 12f * scale;
+
+        _device.BeginStageTiming(RenderStage.UserInterface);
+        _device.Set2DProjection(SafeWindowWidth, SafeWindowHeight);
+        state.Batch.Begin();
+
+        var painter = UiPainter.Create(state.Batch, new LayoutContext(SafeWindowWidth, SafeWindowHeight));
+
+        Bgra32 brightGreen = Bgra32.FromRgb(57, 227, 101);
+        Bgra32 darkBg = Bgra32.FromRgba(10, 24, 14, 235);
+
+        // ── 1. Top-Right Tiny Gear Icon Button ──────────────────────────────
+        painter.FillRect(new UiRect(gearX, gearY, gearW, gearH), darkBg);
+        painter.StrokeRect(new UiRect(gearX, gearY, gearW, gearH), 1.5f * scale, brightGreen);
+
+        // Geometric Gear Icon centered in button
+        float gCenterX = gearX + (gearW * 0.5f);
+        float gCenterY = gearY + (gearH * 0.5f);
+        float gRadius = 4f * scale;
+
+        // Gear teeth (8 teeth)
+        float toothW = 2f * scale;
+        float toothL = 2.5f * scale;
+        painter.FillRect(new UiRect(gCenterX - (toothW * 0.5f), gCenterY - gRadius - toothL, toothW, toothL), brightGreen);
+        painter.FillRect(new UiRect(gCenterX - (toothW * 0.5f), gCenterY + gRadius, toothW, toothL), brightGreen);
+        painter.FillRect(new UiRect(gCenterX - gRadius - toothL, gCenterY - (toothW * 0.5f), toothL, toothW), brightGreen);
+        painter.FillRect(new UiRect(gCenterX + gRadius, gCenterY - (toothW * 0.5f), toothL, toothW), brightGreen);
+        // Diagonal teeth
+        float diag = gRadius * 0.707f;
+        painter.FillRect(new UiRect(gCenterX + diag - (toothW * 0.5f), gCenterY - diag - (toothW * 0.5f), toothW, toothW), brightGreen);
+        painter.FillRect(new UiRect(gCenterX - diag - (toothW * 0.5f), gCenterY - diag - (toothW * 0.5f), toothW, toothW), brightGreen);
+        painter.FillRect(new UiRect(gCenterX + diag - (toothW * 0.5f), gCenterY + diag - (toothW * 0.5f), toothW, toothW), brightGreen);
+        painter.FillRect(new UiRect(gCenterX - diag - (toothW * 0.5f), gCenterY + diag - (toothW * 0.5f), toothW, toothW), brightGreen);
+
+        // Gear Hub & axle hole
+        painter.FillRect(new UiRect(gCenterX - gRadius, gCenterY - gRadius, gRadius * 2f, gRadius * 2f), brightGreen);
+        painter.FillRect(new UiRect(gCenterX - (gRadius * 0.4f), gCenterY - (gRadius * 0.4f), gRadius * 0.8f, gRadius * 0.8f), darkBg);
+
+        // ── 1b. Keyboard icon just under the gear ────────────────────────────
+        // Tapping it toggles the soft keyboard so player names and other menu text
+        // can be typed even when the automatic focus detection does not fire.
+        // It is drawn highlighted while the keyboard is requested. It is deliberately
+        // bigger and brighter than the gear (28 units, lighter green fill) so it
+        // cannot be missed against the dark menu background.
+        float kbW = 28f * scale;
+        float kbH = 28f * scale;
+        float kbX = gearX + ((gearW - kbW) * 0.5f);
+        float kbY = gearY + gearH + (8f * scale);
+        painter.FillRect(new UiRect(kbX, kbY, kbW, kbH), KeyboardRequested ? brightGreen : Bgra32.FromRgba(16, 44, 22, 245));
+        painter.StrokeRect(new UiRect(kbX, kbY, kbW, kbH), 2f * scale, brightGreen);
+        // Two rows of keys and a spacebar. Dark keys when highlighted, bright green otherwise.
+        Bgra32 keyColor = KeyboardRequested ? Bgra32.FromRgb(10, 24, 14) : brightGreen;
+        float key = 3f * scale;
+        float keyGap = 2f * scale;
+        float keysW = (4f * key) + (3f * keyGap);
+        float keysX = kbX + ((kbW - keysW) * 0.5f);
+        float row1Y = kbY + (5.5f * scale);
+        for (int i = 0; i < 4; i++)
+        {
+            painter.FillRect(new UiRect(keysX + (i * (key + keyGap)), row1Y, key, key), keyColor);
+        }
+        float row2Y = row1Y + key + keyGap;
+        for (int i = 0; i < 4; i++)
+        {
+            painter.FillRect(new UiRect(keysX + (i * (key + keyGap)), row2Y, key, key), keyColor);
+        }
+        float spaceW = keysW * 0.6f;
+        float spaceX = kbX + ((kbW - spaceW) * 0.5f);
+        float spaceY = row2Y + key + keyGap;
+        painter.FillRect(new UiRect(spaceX, spaceY, spaceW, key), keyColor);
+
+        // ── 2. Cheats Modal Overlay ───────────────────────────────────────
+        if (_cheatsModalOpen)
+        {
+            // Dim background
+            painter.FillRect(new UiRect(0f, 0f, width, height), Bgra32.FromRgba(0, 0, 0, 215));
+
+            float modalW = Math.Min(700f * scale, width - (32f * scale));
+            float modalH = Math.Min(410f * scale, height - (32f * scale));
+            float modalX = (width - modalW) * 0.5f;
+            float modalY = (height - modalH) * 0.5f;
+
+            // Main modal box
+            painter.FillRect(new UiRect(modalX, modalY, modalW, modalH), Bgra32.FromRgba(8, 18, 11, 252));
+            painter.StrokeRect(new UiRect(modalX, modalY, modalW, modalH), 2f * scale, brightGreen);
+
+            // Modal Title Bar
+            float barH = 46f * scale;
+            painter.FillRect(new UiRect(modalX, modalY, modalW, barH), Bgra32.FromRgba(16, 44, 22, 240));
+            painter.FillRect(new UiRect(modalX, modalY + barH, modalW, 1.5f * scale), brightGreen);
+
+            if (_shellType is { } type)
+            {
+                painter.DrawText(type.Heading, "CHEATS", new UiVec2(modalX + (20f * scale), modalY + (13f * scale)), 17f * scale, brightGreen);
+            }
+
+            float contentY = modalY + barH + (12f * scale);
+            float rowHeight = 62f * scale;
+            float btnW = 110f * scale;
+            float btnH = 40f * scale;
+            float btnX = modalX + modalW - btnW - (20f * scale);
+
+            void DrawCheatRow(int index, string title, string subtitle, bool active, string activeText = "ON", string inactiveText = "OFF")
+            {
+                float rowY = contentY + (index * rowHeight);
+                float textX = modalX + (20f * scale);
+
+                if (_shellType is { } tp)
+                {
+                    painter.DrawText(tp.Heading, title, new UiVec2(textX, rowY + (4f * scale)), 15f * scale, Bgra32.White);
+                    painter.DrawText(tp.Mono, subtitle, new UiVec2(textX, rowY + (25f * scale)), 11f * scale, Bgra32.FromRgb(140, 185, 140));
+                }
+
+                UiRect bRect = new(btnX, rowY + (4f * scale), btnW, btnH);
+                if (active)
+                {
+                    painter.FillRect(bRect, Bgra32.FromRgb(40, 160, 60));
+                    painter.StrokeRect(bRect, 1.5f * scale, Bgra32.FromRgb(120, 255, 140));
+                    if (_shellType is { } tpAct)
+                    {
+                        painter.DrawText(tpAct.Mono, $"[ {activeText} ]", new UiVec2(btnX + (26f * scale), rowY + (13f * scale)), 14f * scale, Bgra32.White);
+                    }
+                }
+                else
+                {
+                    painter.FillRect(bRect, Bgra32.FromRgba(25, 35, 25, 200));
+                    painter.StrokeRect(bRect, 1f * scale, Bgra32.FromRgb(60, 90, 65));
+                    if (_shellType is { } tpInact)
+                    {
+                        painter.DrawText(tpInact.Mono, $"[ {inactiveText} ]", new UiVec2(btnX + (23f * scale), rowY + (13f * scale)), 14f * scale, Bgra32.FromRgb(110, 140, 115));
+                    }
+                }
+            }
+
+            DrawCheatRow(0, "INFINITE HEALTH", "Zero damage from bullets, explosions, falls and electric fences", PlayerCheatCVars.InfiniteHealth.Value);
+            DrawCheatRow(1, "INFINITE AMMUNITION", "Magazines stay filled, reserves never deplete while firing", PlayerCheatCVars.InfiniteAmmo.Value);
+            DrawCheatRow(2, "ALL WEAPONS", "Adds all weapons into inventory for the mission", PlayerCheatCVars.AllWeapons.Value);
+            DrawCheatRow(3, "UNLOCK ALL MISSIONS", "All 14 missions are selectable in Campaign", PlayerCheatCVars.UnlockAllLevels.Value);
+
+            // Close button
+            float closeW = 220f * scale;
+            float closeH = 42f * scale;
+            float closeX = modalX + ((modalW - closeW) * 0.5f);
+            float closeY = modalY + modalH - closeH - (14f * scale);
+            UiRect cRect = new(closeX, closeY, closeW, closeH);
+            painter.FillRect(cRect, Bgra32.FromRgba(18, 38, 22, 230));
+            painter.StrokeRect(cRect, 1.5f * scale, brightGreen);
+            if (_shellType is { } tpClose)
+            {
+                painter.DrawText(tpClose.Heading, "[ CLOSE ]", new UiVec2(closeX + (68f * scale), closeY + (11f * scale)), 15f * scale, brightGreen);
+            }
+        }
+
+        state.Batch.End();
+        _device.EndStageTiming();
+    }
+}
