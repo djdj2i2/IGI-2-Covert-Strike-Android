@@ -7,12 +7,12 @@ using ProjectIGI.Scripting.Expressions;
 namespace ProjectIGI.Game.Menus;
 
 /// <summary>
-/// The namespace a menu action expression is evaluated against: the manager's nine natives, plus
+/// The namespace a menu action expression is evaluated against: the manager's ten natives, plus
 /// whatever else the host supplies.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The nine names and their argument counts come from the manager's constructor (<c>0x417260</c>),
+/// The ten names and their argument counts come from the manager's constructor (<c>0x417260</c>),
 /// which registers them with <c>Script_RegisterNative</c>. Everything else a menu script calls belongs
 /// to a subsystem that does not exist yet — <c>Config_*</c>, <c>LevelFlow_*</c>, <c>Game_*</c> — and is
 /// handed to <see cref="Fallback"/> rather than guessed at.
@@ -60,6 +60,7 @@ public sealed class MenuScriptContext : IScriptExpressionContext
         "MenuManager_SetLanguage",
         "MenuManager_PushScreen",
         "MenuManager_PopScreen",
+        "MenuManager_ClearStack",
         "MenuManager_ForceUpdateWindow",
         "MenuManager_ActivatePopupScreen",
         "MenuManager_DeactivatePopuScreen",
@@ -160,6 +161,15 @@ public sealed class MenuScriptContext : IScriptExpressionContext
 
             case "MenuManager_PopScreen" when arguments.Count >= 1:
                 _stack.Pop(arguments.GetBoolean(0));
+                return true;
+
+            case "MenuManager_ClearStack":
+                // I.G.I. 2's mission-start flow clears the stack before it leaves (screen 914's OK,
+                // 999's OK, the quit popup's Yes, the multiplayer Start): with the stack still
+                // holding the main menu, its LeaveMenus pops back to it instead of leaving — which is
+                // how OK returned to the main menu. The argument is the count the script passes and
+                // is ignored, as the in-game menu's registration of the same native does.
+                _stack.ClearStack();
                 return true;
 
             case "MenuManager_RequestScreen" when arguments.Count >= 2:
