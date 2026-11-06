@@ -4,8 +4,6 @@ A ground-up, high-performance native Android port of the classic tactical stealt
 
 This project runs the game natively on Android ARM64 devices (`com.projectigi2.app`) without emulation or compatibility layers, combining an embedded **.NET 10.0 CoreCLR** runtime, **Vulkan 1.1** graphics, and **OpenAL Soft** spatial audio with authentic retail game logic, assets, and QVM menu system.
 
-> **Status: in development.** The engine loads and renders I.G.I. 2 — all 19 campaign missions build, the world, ground, sky, forest and water draw — and playability is being proven mission by mission. This repo is where that work happens. See [Status](#status) below.
-
 ---
 
 ## User Instructions (How to Play)
