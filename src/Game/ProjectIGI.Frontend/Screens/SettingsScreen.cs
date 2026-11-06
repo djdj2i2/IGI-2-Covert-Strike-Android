@@ -36,6 +36,9 @@ public sealed class SettingsScreen : ShellScreen
     private readonly bool _initialShowFps;
     private readonly float _initialGamma;
     private readonly float _initialSunBrightness;
+    private readonly float _initialCrosshairScale;
+    private readonly int _initialCrosshairColor;
+    private readonly bool _initialCrosshairOutline;
 
     private ScrollView? _scroll;
     private UiVec2? _touchDragStart;
@@ -60,6 +63,9 @@ public sealed class SettingsScreen : ShellScreen
         _initialShowFps = DisplayCVars.ShowFps.Value;
         _initialGamma = PostCVars.Gamma.Value;
         _initialSunBrightness = LightingCVars.SunBrightness.Value;
+        _initialCrosshairScale = HudCVars.CrosshairScale.Value;
+        _initialCrosshairColor = HudCVars.CrosshairColor.Value;
+        _initialCrosshairOutline = HudCVars.CrosshairOutline.Value;
     }
 
     /// <inheritdoc/>
@@ -256,6 +262,47 @@ public sealed class SettingsScreen : ShellScreen
         };
         configStack.AddChild(sunSlider);
 
+        // ── Crosshair: size, colour and outline ────────────────────────────
+        // The sight is a hairline at 1px on a dense display; these make it readable.
+        // They apply to whichever sight is drawn: the original's lines and the
+        // remastered cross alike.
+        float initialCrosshair = HudCVars.CrosshairScale.Value;
+        var crosshairSlider = new Slider(theme, "Crosshair size", 50f, 300f, (int)Math.Round(initialCrosshair * 100f), 5f)
+        {
+            Width = 980f,
+            Height = 56f,
+        };
+        crosshairSlider.ValueChanged += value =>
+        {
+            HudCVars.CrosshairScale.Value = Math.Clamp(value / 100f, 0.5f, 3f);
+        };
+        configStack.AddChild(crosshairSlider);
+
+        var crosshairColourBtn = new Button(theme, "Crosshair colour: " + CrosshairPalette.Names[HudCVars.CrosshairColor.Value])
+        {
+            Width = 980f,
+            Height = 56f,
+        };
+        crosshairColourBtn.Activated += () =>
+        {
+            int next = (HudCVars.CrosshairColor.Value + 1) % CrosshairPalette.Names.Length;
+            HudCVars.CrosshairColor.Value = next;
+            crosshairColourBtn.Text = "Crosshair colour: " + CrosshairPalette.Names[next];
+        };
+        configStack.AddChild(crosshairColourBtn);
+
+        bool crosshairOutlineState = HudCVars.CrosshairOutline.Value;
+        var crosshairOutlineToggle = new Toggle(theme, "Crosshair outline", crosshairOutlineState)
+        {
+            Width = 980f,
+            Height = 56f,
+        };
+        crosshairOutlineToggle.ValueChanged += val =>
+        {
+            HudCVars.CrosshairOutline.Value = val;
+        };
+        configStack.AddChild(crosshairOutlineToggle);
+
         // ── Option 7: Invert Mouse / Look Pitch ───────────────────────────
         bool invertState = Context.Config.Active?.InvertMouse ?? false;
         var invertToggle = new Toggle(theme, "Invert Look / Mouse", invertState)
@@ -371,6 +418,9 @@ public sealed class SettingsScreen : ShellScreen
             DisplayCVars.ShowFps.Value = _initialShowFps;
             PostCVars.Gamma.Value = _initialGamma;
             LightingCVars.SunBrightness.Value = _initialSunBrightness;
+            HudCVars.CrosshairScale.Value = _initialCrosshairScale;
+            HudCVars.CrosshairColor.Value = _initialCrosshairColor;
+            HudCVars.CrosshairOutline.Value = _initialCrosshairOutline;
             if (Context.Config.Active is { } profile)
             {
                 profile.InvertMouse = _initialInvert;
