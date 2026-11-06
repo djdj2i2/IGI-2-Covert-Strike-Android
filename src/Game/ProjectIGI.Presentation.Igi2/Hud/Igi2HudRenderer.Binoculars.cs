@@ -64,7 +64,11 @@ public sealed partial class Igi2HudRenderer
 
     private void DrawBinoculars(SpriteBatch batch, Igi2TitlePlayer title, float width, float height)
     {
-        bool infrared = title.ScreenOverlay?.IsInfrared == true;
+        // The infrared frame follows the thermal goggles as well as the scripts: the
+        // player's infrared flag is what the thermal key sets, and the scripts'
+        // OverlayHolder is the other way a view is made infrared. Before, only the
+        // scripts' flag was read, so the thermal goggles showed this plain frame.
+        bool infrared = title.Human.IsInfraEnabled || title.ScreenOverlay?.IsInfrared == true;
         DrawBinocularFrame(batch, infrared ? InfraredSprite : BinocularSprite, width, height);
         if (infrared)
         {
