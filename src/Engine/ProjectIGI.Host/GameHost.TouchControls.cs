@@ -29,6 +29,13 @@ public sealed partial class GameHost
     // a third finger on Crouch.
     private bool _crouchToggled;
     private bool _crouchHeldPrev;
+    // The map computer's zoom buttons step one level per tap, not while held: a wheel
+    // notch zooms once, so the press edge is what the computer is fed.
+    private bool _computerZoomInHeldPrev;
+    private bool _computerZoomOutHeldPrev;
+    // The map computer's navigation stick, held per direction like the movement stick's:
+    // each direction lets go only back inside the smaller release zone.
+    private (bool Up, bool Down, bool Left, bool Right) _computerStickHeld;
 
     /// <summary>The action the crouch button holds: the running title's own crouch where it replaces the shared one (I.G.I. 2), else the shared action. The shared crouch bit is stripped for a replacing title, so sending the shared name would silently do nothing — the old button only worked because the title's alternate row happened to share the same key.</summary>
     private string CrouchAction()
@@ -65,6 +72,7 @@ public sealed partial class GameHost
         TouchButton.Peek => "Peek",
         TouchButton.Map => "MapComputer",
         TouchButton.Binoculars => "Binoculars",
+        TouchButton.NightVision => "Binoculars",
         TouchButton.ZoomIn => "ZoomIn",
         TouchButton.ZoomOut => "ZoomOut",
         TouchButton.Close => "MapComputer",
@@ -119,6 +127,16 @@ public sealed partial class GameHost
             _crouchHeldPrev = false;
         }
 
+        // Leaving the computer clears the zoom edges and the stick's held directions, so a
+        // zoom button held when it closed does not swallow the first tap when it opens again,
+        // and the map does not keep panning from a stick that is no longer there.
+        if (mode != TouchControlMode.Computer)
+        {
+            _computerZoomInHeldPrev = false;
+            _computerZoomOutHeldPrev = false;
+            _computerStickHeld = default;
+        }
+
         // No early return for Customizing: the Play/Computer blocks below are mode-gated, so
         // nothing new is wanted while customizing — but the release section at the end must still
         // run, or touch input held when customization started (e.g. Fire) stays latched and the
@@ -131,10 +149,67 @@ public sealed partial class GameHost
         {
             foreach (TouchButton button in _touchControls.Held)
             {
-                if (TouchAction(button) is { } action)
+                // The zoom buttons feed the computer's wheel, one notch per tap: the map
+                // zooms a level per wheel notch and would run to its end on a held key.
+                // Anything else held is wanted as its action (Close closes the computer).
+                if (button == TouchButton.ZoomIn)
+                {
+                    if (!_computerZoomInHeldPrev)
+                    {
+                        _titleWheel += 1f;
+                    }
+                }
+                else if (button == TouchButton.ZoomOut)
+                {
+                    if (!_computerZoomOutHeldPrev)
+                    {
+                        _titleWheel -= 1f;
+                    }
+                }
+                else if (TouchAction(button) is { } action)
                 {
                     Want(profile, action);
                 }
+            }
+
+            _computerZoomInHeldPrev = _touchControls.Held.Contains(TouchButton.ZoomIn);
+            _computerZoomOutHeldPrev = _touchControls.Held.Contains(TouchButton.ZoomOut);
+
+            // The navigation stick pans the map the way holding Ctrl with an arrow key does:
+            // the map only pans on an arrow while Control is down, so the stick holds both.
+            // The keys are the computer's fixed ones, not a bound action, and the release
+            // section below lets them go when the stick comes back to centre.
+            UiVec2 computerStick = _touchControls.Stick;
+            static bool HoldComputerDirection(bool held, float along) =>
+                along > (held ? TouchControls.StickReleaseZone : TouchControls.StickDeadZone);
+            _computerStickHeld = (
+                HoldComputerDirection(_computerStickHeld.Up, -computerStick.Y),
+                HoldComputerDirection(_computerStickHeld.Down, computerStick.Y),
+                HoldComputerDirection(_computerStickHeld.Left, -computerStick.X),
+                HoldComputerDirection(_computerStickHeld.Right, computerStick.X));
+            if (_computerStickHeld.Up || _computerStickHeld.Down || _computerStickHeld.Left || _computerStickHeld.Right)
+            {
+                _touchKeysWanted.Add(KeyCode.LeftControl);
+            }
+
+            if (_computerStickHeld.Up)
+            {
+                _touchKeysWanted.Add(KeyCode.Up);
+            }
+
+            if (_computerStickHeld.Down)
+            {
+                _touchKeysWanted.Add(KeyCode.Down);
+            }
+
+            if (_computerStickHeld.Left)
+            {
+                _touchKeysWanted.Add(KeyCode.Left);
+            }
+
+            if (_computerStickHeld.Right)
+            {
+                _touchKeysWanted.Add(KeyCode.Right);
             }
         }
 

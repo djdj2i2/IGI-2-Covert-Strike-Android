@@ -19,6 +19,9 @@ public static class TouchControlsRenderer
     private static readonly Bgra32 IgiRimHeld = Bgra32.FromRgba(160, 195, 245, 255);
     private static readonly Bgra32 IgiInk = Bgra32.FromRgba(228, 238, 252, 255);
     private static readonly Bgra32 IgiInkFaint = Bgra32.FromRgba(140, 165, 200, 165);
+    // The two goggles read apart at a glance: the night-vision button green, the thermal one blue.
+    private static readonly Bgra32 IgiNightVision = Bgra32.FromRgba(150, 225, 150, 255);
+    private static readonly Bgra32 IgiThermal = Bgra32.FromRgba(140, 195, 250, 255);
     private static readonly Bgra32 IgiStickFill = Bgra32.FromRgba(16, 24, 42, 90);
     // The palette below stays for the customization toolbar only; it is a config tool, not the game buttons.
     private static readonly Bgra32 Rim = Bgra32.FromRgba(80, 160, 255, 90);
@@ -50,7 +53,12 @@ public static class TouchControlsRenderer
 
         if (controls.Mode is TouchControlMode.Play or TouchControlMode.Customizing)
         {
-            DrawStick(painter, controls, rim, stroke);
+            DrawStick(painter, controls.StickOrigin ?? controls.StickRest, controls.StickReachPixels, controls.Stick, controls.StickOrigin is not null, rim, stroke);
+        }
+        else if (controls.Mode == TouchControlMode.Computer)
+        {
+            // The map computer's navigation stick, fixed at the top centre.
+            DrawStick(painter, controls.ComputerStickRest, controls.ComputerStickReachPixels, controls.Stick, controls.StickOrigin is not null, rim, stroke);
         }
 
         bool offered = model is { Actions.Count: > 0 };
@@ -74,7 +82,13 @@ public static class TouchControlsRenderer
             }
 
             float size = spot.Radius * (spot.Button == TouchButton.Fire ? 0.5f : 0.46f);
-            Bgra32 ink = spot.Button == TouchButton.Use && !offered && !held ? IgiInkFaint : IgiInk;
+            Bgra32 ink = spot.Button switch
+            {
+                TouchButton.NightVision => IgiNightVision,
+                TouchButton.Thermal => IgiThermal,
+                TouchButton.Use when !offered && !held => IgiInkFaint,
+                _ => IgiInk,
+            };
             DrawGlyph(painter, spot.Button, spot.Centre, size, spot.Radius > context.Px(80f) ? stroke * 1.3f : stroke, ink);
         }
 
@@ -221,11 +235,8 @@ public static class TouchControlsRenderer
         painter.FillArc(centre, radius - thickness, radius, 0f, MathF.Tau, edge);
     }
 
-    private static void DrawStick(UiPainter painter, TouchControls controls, float rim, float stroke)
+    private static void DrawStick(UiPainter painter, UiVec2 origin, float reach, UiVec2 stick, bool active, float rim, float stroke)
     {
-        float reach = controls.StickReachPixels;
-        UiVec2 origin = controls.StickOrigin ?? controls.StickRest;
-        bool active = controls.StickOrigin is not null;
         painter.PushOpacity(active ? 1f : 0.85f);
 
         painter.FillArc(origin, 0f, reach, 0f, MathF.Tau, IgiStickFill);
@@ -238,7 +249,7 @@ public static class TouchControlsRenderer
         painter.DrawChevron(new UiVec2(origin.X - at, origin.Y), caret, UiDirection.Left, stroke * 0.6f, IgiInkFaint);
         painter.DrawChevron(new UiVec2(origin.X + at, origin.Y), caret, UiDirection.Right, stroke * 0.6f, IgiInkFaint);
 
-        UiVec2 knob = new(origin.X + (controls.Stick.X * reach), origin.Y + (controls.Stick.Y * reach));
+        UiVec2 knob = new(origin.X + (stick.X * reach), origin.Y + (stick.Y * reach));
         float knobRadius = reach * 0.4f;
         Disc(painter, knob, knobRadius, active ? IgiFillHeld : IgiFill, active ? IgiRimHeld : IgiRim, rim);
         painter.PopOpacity();
@@ -415,6 +426,17 @@ public static class TouchControlsRenderer
                 Line(-0.12f, -0.15f, 0.12f, -0.15f);
                 Line(-0.62f, -0.15f, -0.4f, -0.68f);
                 Line(0.62f, -0.15f, 0.4f, -0.68f);
+                break;
+            case TouchButton.NightVision:
+                // The binoculars' rings and barrels, with a small star over them: the green
+                // night-vision goggles, next to the thermal's lenses and rising heat.
+                Ring(-0.46f, 0.2f, 0.38f);
+                Ring(0.46f, 0.2f, 0.38f);
+                Line(-0.12f, -0.15f, 0.12f, -0.15f);
+                Line(-0.62f, -0.15f, -0.4f, -0.68f);
+                Line(0.62f, -0.15f, 0.4f, -0.68f);
+                Line(0f, -0.95f, 0f, -0.55f);
+                Line(-0.2f, -0.75f, 0.2f, -0.75f);
                 break;
             case TouchButton.ZoomIn:
                 Line(-0.6f, 0f, 0.6f, 0f);
