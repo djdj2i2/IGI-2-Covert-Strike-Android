@@ -73,6 +73,66 @@ public sealed class Igi2ConfigNatives : IMenuConfiguration, IMenuMissionStats
     /// </remarks>
     public int StatsActiveMissionId { get; private set; }
 
+    /// <summary>
+    /// The mission names and descriptions as Ray wrote them, keyed by mission id.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The retail <c>missions.res</c> texts these replace are the ones the mission screen showed
+    /// before: the lookup was right — each mission's own <c>"Mission N Desc"</c> key, resolved through
+    /// the mounted missions archive — but the archive's descriptions are not the accurate ones, so the
+    /// screen showed the wrong words for the right mission. These are Ray's texts, verbatim.
+    /// </para>
+    /// <para>
+    /// Keyed by mission id, not by list position: id 11 is mission 1, 12 is mission 2, and so on
+    /// through 36 as mission 19, the order <see cref="Igi2MissionCatalogue.InProgressionOrder"/>
+    /// yields. A mission not listed here — a multiplayer map, for example — still falls back to the
+    /// string table, so nothing outside the campaign changes.
+    /// </para>
+    /// <para>
+    /// The Russian / Libyan / Chinese act groupings Ray used to organise the list are deliberately
+    /// not represented here: the menu shows one mission at a time, with no act headers.
+    /// </para>
+    /// </remarks>
+    private static readonly IReadOnlyDictionary<int, (string Name, string Description)> CorrectedMissionTexts =
+        new Dictionary<int, (string Name, string Description)>
+        {
+            [11] = ("Infiltration", "Infiltrate a Carpathian weather station turned mafia lab via mining tunnels using stealth."),
+            [12] = ("Deep in the Mines", "Descend past communication dead zones, disable security locks, and ride the cargo railway to reach the research base."),
+            [13] = ("The Weather Station", "Use a laser cutter to break into the vault for prototype EMP chips and launch a weather balloon for extraction."),
+            [14] = ("Bridge Across the Dnestr", "Plant C4 on the Dnestr River bridge supports to stop a military convoy carrying stolen chips."),
+            [15] = ("Ambush", "Eliminate armored escorts, retrieve anti-armor weapons, and recover the EMP chips from the convoy."),
+            [16] = ("Production Facility", "Infiltrate the manufacturing center, disable tracking grids, and download engineering specs with radio silence."),
+            [17] = ("Border Crossing", "Evade patrols, searchlights, and minefields to cross the border and reach an extraction chopper."),
+            [21] = ("Libyan Rendezvous", "Meet a local intelligence asset at the docks, cause a market distraction, and breach a hotel compound."),
+            [22] = ("Prison Escape", "Infiltrate a desert prison, neutralize guards quietly, and rescue Jach Priboi."),
+            [23] = ("Priboi's Villa", "Clear out forces loyal to Major Zaleb Said to let Priboi recover private vault documents."),
+            [24] = ("The Airfield", "Sneak past checkpoints, sabotage regional air defenses, and board a transport plane."),
+            [25] = ("Zaleb's Stronghold", "Assault a fortified desert fortress, defeat Zaleb, and recover the stolen prototypes."),
+            [26] = ("Showdown at the Docks", "Fight through an Egyptian maritime port and commandeer a Soviet Ekranoplan transport craft."),
+            [31] = ("Island Assault", "Infiltrate a Spratly Islands testing compound controlled by General Wu Xing."),
+            [32] = ("Air-Strike", "Use a laser designator from the ridges to call in precision airstrikes on armored valley targets."),
+            [33] = ("The Ancient Temple", "Bypass heavy perimeter guards and override four ancient security gates into the jungle."),
+            [34] = ("Secret Weapons Lab", "Navigate past tracking cameras to access the research server and copy rocket telemetry data."),
+            [35] = ("Mission Control", "Breach the control building and override automated launch sequences to stop an EMP ballistic missile."),
+            [36] = ("The Launch Pad", "Climb the service tower and manually trigger the emergency fuel venting system to destroy the rocket on the pad."),
+        };
+
+    /// <summary>Gets Ray's corrected name and description for a mission, when one is listed.</summary>
+    private static bool TryGetCorrectedText(int missionId, out string name, out string description)
+    {
+        if (CorrectedMissionTexts.TryGetValue(missionId, out (string Name, string Description) text))
+        {
+            name = text.Name;
+            description = text.Description;
+            return true;
+        }
+
+        name = string.Empty;
+        description = string.Empty;
+        return false;
+    }
+
     /// <inheritdoc/>
     public bool TryGetActiveMissionStats(out string name, out string description)
     {
@@ -87,6 +147,13 @@ public sealed class Igi2ConfigNatives : IMenuConfiguration, IMenuMissionStats
         if (!catalogue.TryGet(StatsActiveMissionId, out MissionDescriptor? mission))
         {
             return false;
+        }
+
+        if (TryGetCorrectedText(mission.Id, out string correctedName, out string correctedDescription))
+        {
+            name = correctedName;
+            description = correctedDescription;
+            return true;
         }
 
         name = Localise(mission.Name);
@@ -172,7 +239,12 @@ public sealed class Igi2ConfigNatives : IMenuConfiguration, IMenuMissionStats
         bool unlockAll = PlayerCheatCVars.UnlockAllLevels.Value;
         foreach (MissionDescriptor mission in Chain())
         {
-            yield return new MenuListItem(mission.Id, Localise(mission.Name));
+            // The corrected name where one is listed, so the list and the stats box
+            // never disagree about what a mission is called.
+            string displayName = TryGetCorrectedText(mission.Id, out string correctedName, out _)
+                ? correctedName
+                : Localise(mission.Name);
+            yield return new MenuListItem(mission.Id, displayName);
             if (!unlockAll && mission.Id == reached)
             {
                 yield break;
