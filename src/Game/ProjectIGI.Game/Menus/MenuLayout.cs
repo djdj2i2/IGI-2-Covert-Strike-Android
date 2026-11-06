@@ -43,22 +43,45 @@ public static class MenuLayout
     /// presentation pieces it keeps.
     /// </summary>
     /// <param name="ColourTable">The colour table the menu's text and boxes draw from.</param>
-    /// <param name="DrawScreenPanel">Whether a screen draws its green panel and title rule.</param>
+    /// <param name="DrawScreenPanel">Whether a screen draws its panel and title rule.</param>
     /// <param name="DrawBackgroundFx">Whether a screen draws the turning green overlay behind itself.</param>
     /// <param name="DrawSelectionGlow">Whether a lit entry draws the glow sprite behind itself.</param>
+    /// <param name="PanelTint">The panel's colours: the fill tint and the border/title-rule edge.</param>
     /// <remarks>
     /// A single value threaded presenter → host → renderer, so a title's look is one choice, not a
     /// second threading path per gate. I.G.I. 1 keeps everything it has always drawn; I.G.I. 2's
-    /// retail menu draws neither the panel nor the overlay, and lights its selection with the glow
-    /// sprite instead of the flat bar.
+    /// retail menu draws the panel in its own blue and never the overlay, and lights its selection
+    /// with the glow sprite instead of the flat bar. (PR #16 gated the panel off for I.G.I. 2 on a
+    /// misread of the reference thumbnail; Ray corrected it 2026-11-06: the blue box around the
+    /// menu and mission screens IS the panel, I.G.I. 1's green box in blue.)
     /// </remarks>
-    public readonly record struct MenuStyle(MenuColourTable ColourTable, bool DrawScreenPanel, bool DrawBackgroundFx, bool DrawSelectionGlow)
+    public readonly record struct MenuStyle(MenuColourTable ColourTable, bool DrawScreenPanel, bool DrawBackgroundFx, bool DrawSelectionGlow, MenuPanelTint PanelTint)
     {
         /// <summary>Project I.G.I.'s menus, exactly as drawn before this type existed.</summary>
-        public static MenuStyle Igi1 { get; } = new(MenuColourTable.Igi1, DrawScreenPanel: true, DrawBackgroundFx: true, DrawSelectionGlow: false);
+        public static MenuStyle Igi1 { get; } = new(MenuColourTable.Igi1, DrawScreenPanel: true, DrawBackgroundFx: true, DrawSelectionGlow: false, PanelTint.Igi1);
 
-        /// <summary>I.G.I. 2's retail menus: its own colour table, no panel, no overlay, glow selection.</summary>
-        public static MenuStyle Igi2 { get; } = new(MenuColourTable.Igi2, DrawScreenPanel: false, DrawBackgroundFx: false, DrawSelectionGlow: true);
+        /// <summary>I.G.I. 2's retail menus: its own colour table, blue panel, no overlay, glow selection.</summary>
+        public static MenuStyle Igi2 { get; } = new(MenuColourTable.Igi2, DrawScreenPanel: true, DrawBackgroundFx: false, DrawSelectionGlow: true, PanelTint.Igi2);
+    }
+
+    /// <summary>The screen panel's colours: the fill tint and the border/title-rule edge.</summary>
+    /// <param name="Fill">The fill colour, drawn as a vertical gradient at the panel's fill alphas (0.2 top, 0.05 bottom).</param>
+    /// <param name="Edge">The border and title-rule colour.</param>
+    /// <remarks>
+    /// Project I.G.I.'s is its green, exactly as drawn before this type existed: full green fill,
+    /// edge at <see cref="MenuScreenPanel.EdgeGreen"/> (the original's 0.75). I.G.I. 2's is
+    /// <b>FIRST PASS — APPROXIMATE.</b> The exact retail panel blue is not measured — no full-size
+    /// retail screenshot is on hand — so it takes the I.G.I. 2 theme blue already in the tree: the
+    /// (80, 160, 255) accent the frontend chrome uses, rimmed in the (125, 170, 225) rim the touch
+    /// controls use. Refine from a full-size retail screenshot.
+    /// </remarks>
+    public readonly record struct MenuPanelTint(Bgra32 Fill, Bgra32 Edge)
+    {
+        /// <summary>Project I.G.I.'s panel, exactly as drawn before this type existed.</summary>
+        public static MenuPanelTint Igi1 { get; } = new(Bgra32.FromRgb(0, 255, 0), Bgra32.FromRgb(0, MenuScreenPanel.EdgeGreen, 0));
+
+        /// <summary>I.G.I. 2's panel: theme blue fill, lighter blue rim. FIRST PASS — see remarks.</summary>
+        public static MenuPanelTint Igi2 { get; } = new(Bgra32.FromRgb(80, 160, 255), Bgra32.FromRgb(125, 170, 225));
     }
 
     /// <summary>

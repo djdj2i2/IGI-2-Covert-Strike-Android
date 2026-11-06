@@ -615,7 +615,7 @@ public sealed class MenuRenderer : IDisposable
         Draw(batch, font, label, x, y, screenWidth, screenHeight);
     }
 
-    /// <summary>Draws the green panel a screen frames its contents with.</summary>
+    /// <summary>Draws the panel a screen frames its contents with, in the style's tint.</summary>
     /// <remarks>
     /// <para>
     /// <c>MenuScreen_DrawPanel</c> (<c>0x421CD0</c>), and the reason the main menu looked bare. The
@@ -623,15 +623,20 @@ public sealed class MenuRenderer : IDisposable
     /// three separate submissions:
     /// </para>
     /// <list type="number">
-    /// <item><description>A four-corner quad filled green, alpha <c>0.2</c> at the top fading to
+    /// <item><description>A four-corner quad filled in the style's tint, alpha <c>0.2</c> at the top fading to
     /// <c>0.05</c> at the bottom — this is the tint over the wall.</description></item>
-    /// <item><description>A closed five-vertex line loop in <c>(0, 0.75, 0)</c> — the border.</description></item>
+    /// <item><description>A closed five-vertex line loop in the style's edge tint — the border.</description></item>
     /// <item><description>A horizontal line twenty pixels below the top edge — the rule under the
     /// screen's title.</description></item>
     /// </list>
     /// <para>
     /// The whole panel is scaled horizontally out of the centre by the manager's fade alpha, so it
     /// opens outwards as a screen appears rather than cutting in.
+    /// </para>
+    /// <para>
+    /// The tint is the style's, not the title's: Project I.G.I.'s is its green, exactly as drawn
+    /// before the tint existed, and I.G.I. 2's is its theme blue. Nothing else about the panel
+    /// changes between titles — same rect, same alphas, same rule offset.
     /// </para>
     /// </remarks>
     private void DrawScreenPanel(SpriteBatch batch, MenuScreenTask screen, int screenWidth, int screenHeight)
@@ -644,8 +649,8 @@ public sealed class MenuRenderer : IDisposable
 
         RectF area = Centred(panel.X0, panel.Y0, panel.X1 - panel.X0, panel.Y1 - panel.Y0, screenWidth, screenHeight);
 
-        Bgra32 top = Bgra32.FromRgba(0, byte.MaxValue, 0, Alpha(panel.Alpha * MenuScreenPanel.TopFillAlpha));
-        Bgra32 bottom = Bgra32.FromRgba(0, byte.MaxValue, 0, Alpha(panel.Alpha * MenuScreenPanel.BottomFillAlpha));
+        Bgra32 top = Bgra32.FromRgba(Style.PanelTint.Fill.R, Style.PanelTint.Fill.G, Style.PanelTint.Fill.B, Alpha(panel.Alpha * MenuScreenPanel.TopFillAlpha));
+        Bgra32 bottom = Bgra32.FromRgba(Style.PanelTint.Fill.R, Style.PanelTint.Fill.G, Style.PanelTint.Fill.B, Alpha(panel.Alpha * MenuScreenPanel.BottomFillAlpha));
 
         batch.DrawQuad(
             TextureHandle.None,
@@ -654,8 +659,9 @@ public sealed class MenuRenderer : IDisposable
             new Vertex2D(area.X + area.Width, area.Y + area.Height, 1f, 1f, bottom),
             new Vertex2D(area.X, area.Y + area.Height, 0f, 1f, bottom));
 
-        // The border, and the rule under the title, both in the darker green the outline uses.
-        Bgra32 edge = Bgra32.FromRgba(0, MenuScreenPanel.EdgeGreen, 0, Alpha(panel.Alpha));
+        // The border, and the rule under the title, both in the style's edge tint — I.G.I. 1's
+        // darker green, I.G.I. 2's lighter blue.
+        Bgra32 edge = Bgra32.FromRgba(Style.PanelTint.Edge.R, Style.PanelTint.Edge.G, Style.PanelTint.Edge.B, Alpha(panel.Alpha));
 
         foreach ((int x, int y, int width, int height) in
             MenuLayout.GetBoxOutline(panel.X0, panel.Y0, panel.X1 - panel.X0, panel.Y1 - panel.Y0))
