@@ -58,9 +58,14 @@ public sealed partial class GameHost
 
         bool retailFog = FogCVars.RetailFog.Value;
         _device.SetFog(retailFog ? RetailAir(_globalLight.ObjectFog) : SceneFog.None);
+        // The sun slider scales the flat model light too: it is the only light an
+        // unbaked model without a vertex sun gets, and nothing sets the vertex sun
+        // for the world's draws, so the enemy models are lit by this ambient alone.
+        // A draw with a sun or a lightmap takes a tint of one instead, so this never
+        // double-applies with the sun or the lightmap scale.
         _device.SetModelAmbient(
             _gi.EffectiveLighting == LightingModel.Baked
-                ? _globalLight.ObjectAmbient
+                ? _globalLight.ObjectAmbient * LightingCVars.SunBrightness.Value
                 : GlobalLightSettings.DefaultAmbient);
 
         if (mapScene is null || _computerFlight.IsFlying)

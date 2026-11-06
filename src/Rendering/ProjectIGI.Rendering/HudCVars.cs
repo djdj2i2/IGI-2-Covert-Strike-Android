@@ -107,6 +107,60 @@ public static class HudCVars
         high: "1",
         ultra: "1");
 
+    /// <summary>How large the crosshair is drawn, as a multiple of its authored size.</summary>
+    /// <remarks>
+    /// Scales whichever sight is drawn -- the original's lines or the remastered cross -- so a
+    /// sight that reads as a hairline on a dense display can be made to read at all. 1 is the
+    /// size as authored.
+    /// </remarks>
+    public static readonly NumericCVar<float> CrosshairScale = Presets.Define(
+        CVar.Float(
+            "r_crosshair_scale",
+            1f,
+            0.5f,
+            3f,
+            CVarOptions.Archive,
+            "Crosshair size: scales the sight as drawn, 0.5 to 3 times its authored size."),
+        vanilla: "1",
+        enhanced: "1",
+        high: "1",
+        ultra: "1");
+
+    /// <summary>Which colour the crosshair is drawn in, as an index into the crosshair palette.</summary>
+    /// <remarks>
+    /// 0 keeps the sight's own colour -- the profile's for the original sight, white with an accent
+    /// dot for the remastered cross. Any other value recolours the whole sight, so it can be set
+    /// against whatever the level behind it is.
+    /// </remarks>
+    public static readonly NumericCVar<int> CrosshairColor = Presets.Define(
+        CVar.Int(
+            "r_crosshair_color",
+            0,
+            0,
+            5,
+            CVarOptions.Archive,
+            "Crosshair colour: 0 the sight's own, 1 white, 2 yellow, 3 green, 4 cyan, 5 red."),
+        vanilla: "0",
+        enhanced: "0",
+        high: "0",
+        ultra: "0");
+
+    /// <summary>Whether the crosshair is drawn over a dark outline so it reads on bright ground.</summary>
+    /// <remarks>
+    /// A black under-stroke a little wider than the sight itself, so the sight keeps its colour
+    /// and still shows against sky, sand and snow. Off leaves the sight exactly as authored.
+    /// </remarks>
+    public static readonly BoolCVar CrosshairOutline = Presets.Define(
+        CVar.Bool(
+            "r_crosshair_outline",
+            false,
+            CVarOptions.Archive,
+            "Draw the crosshair over a dark outline so it reads on bright backgrounds."),
+        vanilla: "0",
+        enhanced: "0",
+        high: "0",
+        ultra: "0");
+
     /// <summary>Whether the crosshair marks a hit and confirms a kill.</summary>
     public static readonly BoolCVar HitMarkers = Presets.Define(
         CVar.Bool(

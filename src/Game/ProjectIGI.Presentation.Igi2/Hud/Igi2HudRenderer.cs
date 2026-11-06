@@ -104,11 +104,33 @@ public sealed partial class Igi2HudRenderer : ITitleHudPresenter
         float precision = ((Fpu)title.Human.ActualWeaponPrecision + title.Human.ActualModifiedPrecision).F;
         int count = Igi2WeaponSight.Write(lines, held.WeaponType.SightDisplayType, precision,
             title.Human.View.FieldOfView, screenWidth, screenHeight, thick);
+        // The sight as the settings draw it: larger, recoloured, and over a dark outline
+        // where asked, so it reads on a dense display and against bright ground. The lines
+        // are scaled about the screen's centre, which is where the sight sits.
+        float scale = HudCVars.CrosshairScale.Value;
+        float centreX = screenWidth * 0.5f;
+        float centreY = screenHeight * 0.5f;
+        float thickness = (thick ? 2f : 1f) * scale;
+        Bgra32? chosen = CrosshairPalette.Color(HudCVars.CrosshairColor.Value);
+        bool outline = HudCVars.CrosshairOutline.Value;
         for (int i = 0; i < count; i++)
         {
             Igi2SightLine line = lines[i];
-            Bgra32 colour = Bgra32.FromRgba(Channel(r), Channel(g), Channel(b), Channel(alpha * line.Alpha));
-            Stroke(batch, line, thick ? 2f : 1f, colour);
+            Igi2SightLine drawn = scale == 1f ? line : new Igi2SightLine(
+                centreX + ((line.X1 - centreX) * scale),
+                centreY + ((line.Y1 - centreY) * scale),
+                centreX + ((line.X2 - centreX) * scale),
+                centreY + ((line.Y2 - centreY) * scale),
+                line.Alpha);
+            byte lineAlpha = Channel(alpha * line.Alpha);
+            Bgra32 colour = chosen is { } colourChoice
+                ? colourChoice.WithAlpha(lineAlpha)
+                : Bgra32.FromRgba(Channel(r), Channel(g), Channel(b), lineAlpha);
+            if (outline)
+            {
+                Stroke(batch, drawn, thickness + 2f, Bgra32.FromRgba(0, 0, 0, lineAlpha));
+            }
+            Stroke(batch, drawn, thickness, colour);
         }
     }
 

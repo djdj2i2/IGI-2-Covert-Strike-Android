@@ -618,17 +618,34 @@ internal sealed class RemasteredHudRenderer : IRemasteredHudPresenter
         // Dead centre, in every view. Third person does not move it: the shot converges on what the
         // centre of the screen is over (PlayerCamera.AimConvergencePointUnits), rather than the cross
         // chasing a shot that leaves an eye the camera is no longer sitting at.
+        //
+        // The sight as the settings draw it: larger, recoloured, and over a dark outline where
+        // asked, so it reads on a dense display and against bright ground. The outline is the
+        // same four arms and the dot drawn a little larger in black first.
+        float scale = HudCVars.CrosshairScale.Value;
         float centreX = context.SafeRect.X + (context.SafeRect.Width * 0.5f);
         float centreY = context.SafeRect.Y + (context.SafeRect.Height * 0.5f);
-        float gap = context.Px(7f);
-        float arm = context.Px(7f);
-        float thickness = MathF.Max(1f, context.Px(1.5f));
-        Bgra32 cross = Text.WithAlpha(220);
+        float gap = context.Px(7f) * scale;
+        float arm = context.Px(7f) * scale;
+        float thickness = MathF.Max(1f, context.Px(1.5f) * scale);
+        Bgra32? chosen = CrosshairPalette.Color(HudCVars.CrosshairColor.Value);
+        Bgra32 cross = chosen ?? Text.WithAlpha(220);
+        Bgra32 dot = chosen ?? Accent;
+        if (HudCVars.CrosshairOutline.Value)
+        {
+            float pad = MathF.Max(1f, context.Px(1f));
+            Bgra32 black = Bgra32.FromRgba(0, 0, 0, 220);
+            painter.FillRect(new UiRect(centreX - gap - arm - pad, centreY - (thickness * 0.5f) - pad, arm + (pad * 2f), thickness + (pad * 2f)), black);
+            painter.FillRect(new UiRect(centreX + gap - pad, centreY - (thickness * 0.5f) - pad, arm + (pad * 2f), thickness + (pad * 2f)), black);
+            painter.FillRect(new UiRect(centreX - (thickness * 0.5f) - pad, centreY - gap - arm - pad, thickness + (pad * 2f), arm + (pad * 2f)), black);
+            painter.FillRect(new UiRect(centreX - (thickness * 0.5f) - pad, centreY + gap - pad, thickness + (pad * 2f), arm + (pad * 2f)), black);
+            painter.FillRect(new UiRect(centreX - (thickness * 0.5f) - pad, centreY - (thickness * 0.5f) - pad, thickness + (pad * 2f), thickness + (pad * 2f)), black);
+        }
         painter.FillRect(new UiRect(centreX - gap - arm, centreY - (thickness * 0.5f), arm, thickness), cross);
         painter.FillRect(new UiRect(centreX + gap, centreY - (thickness * 0.5f), arm, thickness), cross);
         painter.FillRect(new UiRect(centreX - (thickness * 0.5f), centreY - gap - arm, thickness, arm), cross);
         painter.FillRect(new UiRect(centreX - (thickness * 0.5f), centreY + gap, thickness, arm), cross);
-        painter.FillRect(new UiRect(centreX - (thickness * 0.5f), centreY - (thickness * 0.5f), thickness, thickness), Accent);
+        painter.FillRect(new UiRect(centreX - (thickness * 0.5f), centreY - (thickness * 0.5f), thickness, thickness), dot);
     }
 
     private static void DrawInteraction(UiPainter painter, LayoutContext context, UiTheme type, string? actionSprite)
