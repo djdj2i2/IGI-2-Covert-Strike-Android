@@ -41,6 +41,19 @@ public sealed class MenuNavigator
     /// <param name="dialect">The game's manager; Project I.G.I.'s when <see langword="null"/>.</param>
     public MenuNavigator(MenuManagerDialect? dialect = null) => Dialect = dialect ?? MenuManagerDialect.Igi1;
 
+    /// <summary>Changes the game's manager this machine runs as.</summary>
+    /// <param name="dialect">The game's manager.</param>
+    /// <remarks>
+    /// Only before the machine starts: the manager captures this machine when it is initialised, and a start already ran
+    /// under the old numbering. A menu loaded for another title takes its own numbering here, between the script load and
+    /// the manager's initialisation, while nothing has read the machine yet.
+    /// </remarks>
+    public void SetDialect(MenuManagerDialect dialect)
+    {
+        ArgumentNullException.ThrowIfNull(dialect);
+        Dialect = dialect;
+    }
+
     /// <summary>Raised when a native asks for the open screen's data to be given back before it leaves.</summary>
     /// <remarks>
     /// The manager answers by running the change-data event over the screen's subtree (<c>0x424880</c> in Project I.G.I.,
@@ -49,7 +62,7 @@ public sealed class MenuNavigator
     public event EventHandler? SaveRequested;
 
     /// <summary>Gets the game's manager this machine runs as.</summary>
-    public MenuManagerDialect Dialect { get; }
+    public MenuManagerDialect Dialect { get; private set; }
 
     /// <summary>Gets the screen the manager is on, or about to move to.</summary>
     public int CurrentScreen { get; private set; }

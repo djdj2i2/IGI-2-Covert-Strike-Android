@@ -14,6 +14,9 @@
     <ProjectReference Include="..\ProjectIGI.Game.Igi2\ProjectIGI.Game.Igi2.csproj" />
     <ProjectReference Include="..\..\Rendering\ProjectIGI.Rendering\ProjectIGI.Rendering.csproj" />
     <ProjectReference Include="..\ProjectIGI.Presentation\ProjectIGI.Presentation.csproj" />
+    <!-- The retail menu shell (RetailMenuHost) is Project I.G.I.'s own; I.G.I. 2 draws its menus through it
+         rather than a copy. There is no cycle: Presentation.Igi1 names no Igi2 project. -->
+    <ProjectReference Include="..\ProjectIGI.Presentation.Igi1\ProjectIGI.Presentation.Igi1.csproj" />
   </ItemGroup>
 
 </Project>
