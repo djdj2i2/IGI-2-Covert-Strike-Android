@@ -167,9 +167,6 @@ public enum TouchButton
     /// <summary>The binoculars.</summary>
     Binoculars,
 
-    /// <summary>The binoculars as the green night-vision goggles (I.G.I. 2): the same B key as the binoculars, its own button.</summary>
-    NightVision,
-
     /// <summary>Zoom in, through the binoculars or a sight.</summary>
     ZoomIn,
 
@@ -879,7 +876,7 @@ public sealed class TouchControls
             ? [TouchElementId.Pause, TouchElementId.Map, TouchElementId.Binoculars, TouchElementId.WalkRun]
             : [TouchElementId.Pause, TouchElementId.Map, TouchElementId.Binoculars];
         TouchButton[] cornerBtns = ShowIgi2Buttons
-            ? [TouchButton.Pause, TouchButton.Map, TouchButton.NightVision, TouchButton.WalkRun]
+            ? [TouchButton.Pause, TouchButton.Map, TouchButton.Binoculars, TouchButton.WalkRun]
             : [TouchButton.Pause, TouchButton.Map, TouchButton.Binoculars];
         for (int i = 0; i < cornerBtns.Length; i++)
         {

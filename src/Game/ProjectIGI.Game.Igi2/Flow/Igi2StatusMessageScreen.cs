@@ -140,6 +140,9 @@ public sealed class Igi2StatusMessageScreen
         if (message.IsCutsceneMessage)
         {
             // Laid out whole on its first tick (StatusMessageScreen_FormatMessageText, not ported), and done from then on.
+            // Whole means visible at once: the fade-in below is the box opening of an ordinary line, and a cutscene's has
+            // none, so it stands at full strength from its first tick rather than drawing at an alpha of nought.
+            slot.Fade = 1f;
             slot.DoneTicks++;
         }
         else if (slot.Age >= PrintStart)
