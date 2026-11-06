@@ -14,4 +14,7 @@ public interface ITitlePlayerComputer
 
     /// <summary>Gets a value indicating whether the player's computer offers its map now.</summary>
     bool ComputerMapAvailable { get; }
+
+    /// <summary>Gets a value indicating whether the player's own computer is open on its screens.</summary>
+    bool IsComputerShown { get; }
 }

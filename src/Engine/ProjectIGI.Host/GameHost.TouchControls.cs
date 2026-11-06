@@ -78,6 +78,9 @@ public sealed partial class GameHost
         _ => null,
     };
 
+    /// <summary>Whether a title's own map computer is open. The host's flag is only ever set by the tactical computer or I.G.I. 1's mission tick, so a title computer — I.G.I. 2's, opened from its own Map action — would otherwise never switch the controls to their computer layout, and its zoom buttons and navigation stick would never appear.</summary>
+    private bool TitleComputerOpen => TitlePlayer is ITitlePlayerComputer { IsComputerShown: true };
+
     /// <summary>What the game is showing, for the controls: a cutscene, play with the pointer locked, or anything with a pointer.</summary>
     private TouchControlMode CurrentTouchMode()
     {
@@ -91,7 +94,7 @@ public sealed partial class GameHost
             return TouchControlMode.Cutscene;
         }
 
-        if (_computerOpen && !_menuFlow.MenuMode)
+        if ((_computerOpen || TitleComputerOpen) && !_menuFlow.MenuMode)
         {
             return TouchControlMode.Computer;
         }
@@ -148,10 +151,32 @@ public sealed partial class GameHost
         {
             foreach (TouchButton button in _touchControls.Held)
             {
+                // Pause stays usable while the computer is open: the same guards as in
+                // play, so it cannot open over a failed mission, a cutscene or a menu.
+                // The computer itself stays open behind the pause menu and is there
+                // again when it closes.
+                if (button == TouchButton.Pause)
+                {
+                    if (!_menuFlow.PauseMenu
+                        && !_computerOpen
+                        && !_session.FailedMenu
+                        && _mission.Cutscenes?.IsPlaying != true
+                        && _mission.MenusEnabled
+                        && state.Shell is not null
+                        && _session.Mission is not null)
+                    {
+                        _menuFlow.MenuMode = true;
+                        _menuFlow.PauseMenu = true;
+                        state.Shell.OpenPauseMenu();
+                        HostedPlayer?.HoldStill();
+                        _window.CursorLocked = false;
+                        _logger.Information("Menu", "Paused via touch button.");
+                    }
+                }
                 // The zoom buttons feed the computer's wheel, one notch per tap: the map
                 // zooms a level per wheel notch and would run to its end on a held key.
-                // Anything else held is wanted as its action (Close closes the computer).
-                if (button == TouchButton.ZoomIn)
+                // Anything else held is wanted as its action (Map closes the computer).
+                else if (button == TouchButton.ZoomIn)
                 {
                     if (!_computerZoomInHeldPrev)
                     {
