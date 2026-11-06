@@ -18,10 +18,27 @@ internal sealed class Igi2RetailMenus : IRetailMenus
     /// <param name="request">What the menus are started with.</param>
     public Igi2RetailMenus(in RetailMenusRequest request)
     {
-        MenuSystem menu = MenuSystem.Load(
-            request.FileSystem.ReadAllBytes("LOCAL:menusystem/mainmenu.qvm"),
-            request.Loop,
-            request.Logger);
+        // The loop's registry already holds this title's menu classes under the shared names
+        // ("MenuManager" is Igi2MenuManagerTask, and so on), and MenuSystem.Load registers the
+        // shared classes under those same names -- without the swap it throws on the first of
+        // them. Swap the colliding names to the shared classes for the load, then swap them back,
+        // so the menu is built from the shared classes and later scripts still spawn this
+        // title's. The load's own registration tolerates the names it just swapped (see
+        // TaskTypeRegistry.RegisterOrKeep), since they already make the shared classes.
+        IReadOnlyList<string> swapped = Igi2MenuTypeSwap.SwapToShared(request.Loop.Types);
+        MenuSystem menu;
+        try
+        {
+            menu = MenuSystem.Load(
+                request.FileSystem.ReadAllBytes("LOCAL:menusystem/mainmenu.qvm"),
+                request.Loop,
+                request.Logger);
+        }
+        finally
+        {
+            Igi2MenuTypeSwap.SwapToIgi2(request.Loop.Types, swapped);
+        }
+
         _menu = menu;
 
         // The script's top-level code only creates tasks, so nothing has read the navigator yet; the manager takes
@@ -44,6 +61,14 @@ internal sealed class Igi2RetailMenus : IRetailMenus
             // Leaving with StartGame starts the chosen mission; leaving any other way quits.
             leaving => leave(leaving == MenuManagerState.StartGame),
             request.Logger));
+
+        // The script passes 904 as "Current menuscreen": the screen it actually opens on comes
+        // from its default-screen expression, Flow_IsPlayCredits() ? 916 : 923, which the shared
+        // manager never evaluates -- it starts on CurrentMenuScreen. The logo screen 923 would
+        // need its 169-tick timeout to reach the main menu, and nothing in the tree implements a
+        // screen timeout (nothing reads TicksToTimeout), so open directly on the main menu
+        // instead. Phase 2 owns the default-screen native and the splash timeout.
+        menu.Manager.CurrentMenuScreen = 900;
 
         // -screen is a development shortcut, not a game feature: the script decides where the menu
         // opens, and this overwrites that one parameter before the manager reads it.
