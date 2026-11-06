@@ -59,11 +59,14 @@ public sealed class Igi2HumanView
     public bool IsZoomMode { get; set; }
 
     /// <summary>Takes the scope's zoom off and the fields of view back to their defaults (<c>HumanView_DisableZoomMode</c>, <c>igi2 0x4D72E0</c>).</summary>
+    /// <remarks>Also takes the zoom's aim and step back, so a later <see cref="RunZoom"/> has nothing left to steer toward.</remarks>
     public void DisableZoomMode()
     {
         IsZoomMode = false;
         FieldOfView = DefaultFieldOfView;
         ObjectFieldOfView = DefaultObjectFieldOfView;
+        IdealFieldOfView = DefaultFieldOfView;
+        FieldOfViewSpeed = 0f;
     }
 
     /// <summary>Gets or sets how far a landing pushed the view down, <c>vImpactOffset</c>.</summary>
@@ -107,7 +110,8 @@ public sealed class Igi2HumanView
     public float ObjectFieldOfView { get; set; } = DefaultObjectFieldOfView;
 
     /// <summary>Gets or sets the field of view's scale a zoom steers to, <c>HumanView+0x2A4</c>.</summary>
-    public float IdealFieldOfView { get; set; }
+    /// <remarks>Starts at the default, so a view that never zoomed has nothing to steer toward.</remarks>
+    public float IdealFieldOfView { get; set; } = DefaultFieldOfView;
 
     /// <summary>Gets or sets how far the field of view's scale steps toward <see cref="IdealFieldOfView"/> a tick, <c>HumanView+0x2A8</c>.</summary>
     public float FieldOfViewSpeed { get; set; }
@@ -116,9 +120,15 @@ public sealed class Igi2HumanView
     /// Steps a zoom's field of view toward its aim, the zoom half of <c>HumanView_RunHandler</c> (<c>igi2 0x4D5C50</c>),
     /// which runs in the tick's run pass: by its speed, and no further than the aim.
     /// </summary>
+    /// <remarks>
+    /// The gate is the aim itself, not zoom mode: a zoom without an overlay — a weapon's iron sights — never puts the view
+    /// into zoom mode, so gating on it left the aim <see cref="AimZoom"/> set unsteered and the sights did nothing. With no
+    /// zoom up the field of view sits on its aim (the default) and this is a no-op; a step of nought, which is what
+    /// <see cref="DisableZoomMode"/> leaves behind, moves nothing either.
+    /// </remarks>
     public void RunZoom()
     {
-        if (!IsZoomMode)
+        if (FieldOfView == IdealFieldOfView)
         {
             return;
         }

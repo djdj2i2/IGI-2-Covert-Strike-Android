@@ -45,14 +45,12 @@ public sealed class Igi2ZoomFire : IIgi2FireHandler, IIgi2ZoomHandler
         Igi2ZoomTask zoom = (Igi2ZoomTask)request.FireTypeParameters;
         Igi2WeaponFiring weapon = request.Weapon;
         bool hasOverlay = zoom.OverlayQTaskType != Igi2WeaponConstants.NoTaskType;
-        if (view.IsZoomMode)
+        // The test is the weapon's overlay status, not zoom mode: a zoom without an overlay —
+        // a weapon's iron sights — never puts the view into zoom mode, so testing that left it
+        // stuck up, a second press re-arming it instead of taking it down. Taking the status
+        // down takes the zoom off and the overlay with it, for either kind.
+        if (weapon.OverlayStatus != Igi2WeaponOverlayStatus.None)
         {
-            view.DisableZoomMode();
-            if (hasOverlay)
-            {
-                weapon.Effects.RemoveOverlay();
-            }
-
             weapon.SetOverlayStatus(Igi2WeaponOverlayStatus.None);
             return Igi2FireResult.Nothing;
         }
