@@ -19,28 +19,36 @@ public static class MissionProgression
 
         // The next mission must itself be on the campaign, after the active one. Unlocking on merely passing
         // the active mission unlocked a mission the catalogue does not offer (the browser build's
-        // six-mission limit let the sixth unlock the seventh).
-        bool passedActive = false;
+        // six-mission limit let the sixth unlock the seventh). A profile whose active mission is on no
+        // mission of this campaign — a fresh I.G.I. 2 profile's shared ActiveMission is 1, which is no
+        // mission of the sequel's — counts as standing on the first mission: without that, the first
+        // completion could never unlock the second, because the walk would never pass the active one.
+        // The same reading as <see cref="Status"/> gives an unknown frontier: the first mission.
+        int frontier = 0;
+        int wanted = -1;
+        int index = 0;
         foreach (MissionDescriptor mission in missions.InProgressionOrder())
         {
-            if (mission.Id == nextMissionId)
-            {
-                if (!passedActive)
-                {
-                    return false;
-                }
-
-                profile.ActiveMission = nextMissionId;
-                return true;
-            }
-
             if (mission.Id == profile.ActiveMission)
             {
-                passedActive = true;
+                frontier = index;
             }
+
+            if (mission.Id == nextMissionId)
+            {
+                wanted = index;
+            }
+
+            index++;
         }
 
-        return false;
+        if (wanted < 0 || wanted <= frontier)
+        {
+            return false;
+        }
+
+        profile.ActiveMission = nextMissionId;
+        return true;
     }
 
     /// <summary>Gets a mission's campaign status when ActiveMission means the furthest unlocked mission.</summary>

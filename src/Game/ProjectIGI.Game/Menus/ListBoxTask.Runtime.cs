@@ -84,7 +84,26 @@ public partial class ListBoxTask
         _items.Clear();
         _items.AddRange(items);
         Index = Math.Clamp(Index, 0, Math.Max(0, _items.Count - 1));
+        if (Index < _items.Count && !_items[Index].Enabled)
+        {
+            Index = FirstEnabledRow();
+        }
+
         ActiveId = ActiveIdAt(Index);
+    }
+
+    /// <summary>Gets the first row that may be picked, or the clamped index when none may.</summary>
+    private int FirstEnabledRow()
+    {
+        for (int i = 0; i < _items.Count; i++)
+        {
+            if (_items[i].Enabled)
+            {
+                return i;
+            }
+        }
+
+        return Math.Clamp(Index, 0, Math.Max(0, _items.Count - 1));
     }
 
     /// <inheritdoc/>
@@ -113,15 +132,11 @@ public partial class ListBoxTask
         {
             if (LeftButton.WasClicked || PendingCommand == MenuWindowCommand.Left)
             {
-                Index--;
-                if (Index == -1)
-                {
-                    Index = _items.Count - 1;
-                }
+                Step(-1);
             }
             else if (RightButton.WasClicked || PendingCommand == MenuWindowCommand.Right)
             {
-                Index = (Index + 1) % _items.Count;
+                Step(1);
             }
 
             ActiveId = ActiveIdAt(Index);
@@ -133,6 +148,34 @@ public partial class ListBoxTask
         {
             Manager?.PlaySound(MenuManagerTask.MoveSoundName);
             Run(ModifyDataScript);
+        }
+    }
+
+    /// <summary>Steps through the list in a direction, passing over rows that may not be picked.</summary>
+    /// <remarks>
+    /// The wrap is the original's asymmetric one: stepping back decrements and then tests for
+    /// <c>-1</c>, while stepping forward wraps at the count. A list with no disabled rows steps
+    /// exactly as it did; a list with every row disabled stops after one full turn, wherever it
+    /// landed, rather than looping forever.
+    /// </remarks>
+    private void Step(int direction)
+    {
+        for (int i = 0; i < _items.Count; i++)
+        {
+            Index += direction;
+            if (Index == -1)
+            {
+                Index = _items.Count - 1;
+            }
+            else if (Index == _items.Count)
+            {
+                Index = 0;
+            }
+
+            if (_items[Index].Enabled)
+            {
+                return;
+            }
         }
     }
 
@@ -246,8 +289,9 @@ public partial class ListBoxTask
 /// <summary>One entry in a list box.</summary>
 /// <param name="Id">The value the script reads back as <c>nActiveID</c>.</param>
 /// <param name="Label">The text shown when this entry is current.</param>
+/// <param name="Enabled">Whether the entry may be picked: a disabled one is shown and never selected, so a list can show what is locked without letting it be chosen.</param>
 /// <remarks>
 /// The original stores these inline, 44 bytes each: the id and then a forty-character label. The id
 /// is not the position — a resolution list's ids are the engine's device numbers.
 /// </remarks>
-public readonly record struct MenuListItem(int Id, string Label);
+public readonly record struct MenuListItem(int Id, string Label, bool Enabled = true);

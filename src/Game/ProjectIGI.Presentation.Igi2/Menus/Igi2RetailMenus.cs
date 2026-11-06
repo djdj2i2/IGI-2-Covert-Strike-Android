@@ -6,8 +6,10 @@ using ProjectIGI.Game.Igi2.Config;
 using ProjectIGI.Game.Igi2.Menus;
 using ProjectIGI.Game.Igi2.Saves;
 using ProjectIGI.Game.Menus;
+using ProjectIGI.Game.World;
 using ProjectIGI.Presentation.Igi1.Menus;
 using ProjectIGI.Presentation.Rendering;
+using ProjectIGI.Scripting.Runtime;
 
 namespace ProjectIGI.Presentation.Igi2.Menus;
 
@@ -109,14 +111,31 @@ internal sealed class Igi2RetailMenus : IRetailMenus
         Igi2SaveSession? saves = services is not null && services.TryGet(out Igi2SaveSession? foundSaves)
             ? foundSaves
             : null;
-        menu.Manager.Configuration = new Igi2ConfigNatives(
+        Igi2ConfigNatives configuration = new(
             config,
             request.Missions,
             request.Strings,
             saves,
-            request.Logger);
+            request.Logger,
+            request.Configuration);
+        menu.Manager.Configuration = configuration;
 
-        menu.Manager.ExternalNatives = request.ExternalNatives;
+        // The mission screen's OK button starts whatever id the list holds, so the lock is enforced
+        // where the id is taken as well as where the list is drawn: a locked row can never be
+        // selected, but a stale or scripted id reaching Game_SetMission must not start its mission
+        // either. Refusing it leaves the pending mission at zero, which the leave handler already
+        // answers by reopening the main menu instead of starting nothing.
+        menu.Manager.ExternalNatives = (name, arguments) =>
+        {
+            if (string.Equals(name, GameMissionState.SetMissionNative, StringComparison.Ordinal)
+                && !configuration.IsUnlocked(arguments.GetInt32(0)))
+            {
+                request.Logger.Warning("Menu", $"Refused to start locked mission {arguments.GetInt32(0)}.");
+                return QvmValue.FromInt32(0);
+            }
+
+            return request.ExternalNatives(name, arguments);
+        };
         menu.Manager.Initialize(menu, _shell, request.Logger);
     }
 

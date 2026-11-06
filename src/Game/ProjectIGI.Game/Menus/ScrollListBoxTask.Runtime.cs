@@ -83,6 +83,11 @@ public partial class ScrollListBoxTask
         _items.Clear();
         _items.AddRange(items);
         Index = Math.Clamp(Index, 0, Math.Max(0, _items.Count - 1));
+        if (Index < _items.Count && !_items[Index].Enabled)
+        {
+            Index = FirstEnabledRow();
+        }
+
         KeepSelectionVisible();
 
         if (Index < _items.Count)
@@ -91,13 +96,27 @@ public partial class ScrollListBoxTask
         }
     }
 
+    /// <summary>Gets the first row that may be picked, or the clamped index when none may.</summary>
+    private int FirstEnabledRow()
+    {
+        for (int i = 0; i < _items.Count; i++)
+        {
+            if (_items[i].Enabled)
+            {
+                return i;
+            }
+        }
+
+        return Math.Clamp(Index, 0, Math.Max(0, _items.Count - 1));
+    }
+
     /// <summary>Selects a row by its id, scrolling it into view.</summary>
-    /// <param name="id">The id to look for. An id the list does not hold leaves the selection alone.</param>
-    /// <returns><see langword="true"/> when the id was found.</returns>
+    /// <param name="id">The id to look for. An id the list does not hold, or one it holds on a row that may not be picked, leaves the selection alone.</param>
+    /// <returns><see langword="true"/> when the id was found on a row that may be picked.</returns>
     public bool SelectId(int id)
     {
         int row = _items.FindIndex(item => item.Id == id);
-        if (row < 0)
+        if (row < 0 || !_items[row].Enabled)
         {
             return false;
         }
@@ -180,6 +199,13 @@ public partial class ScrollListBoxTask
         _dragAnchorY = pointer.Y;
 
         int row = ScrollOffset + ((pointer.Y - LayoutY) / Math.Max(1, RowHeight));
+
+        // A locked row is shown but never picked: tapping it moves nothing and arms no double
+        // click, though the press still starts a drag, so the list scrolls from anywhere.
+        if (row < _items.Count && !_items[row].Enabled)
+        {
+            return;
+        }
 
         // Clicking the already-selected row, or past the last one, does not move the selection: it is
         // the first half of a double click, and a second one runs On Select Item.
