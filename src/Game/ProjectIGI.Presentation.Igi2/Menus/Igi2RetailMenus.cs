@@ -51,7 +51,11 @@ internal sealed class Igi2RetailMenus : IRetailMenus
             request.FileSystem,
             menu.Manager.ResourcePath,
             request.Strings() ?? throw new InvalidOperationException("The language's text is loaded before the menus start."),
-            ["LOCAL:menusystem/missionsprites.res"],
+            // The menu's text is drawn from font1/font3/font4.fnt, and I.G.I. 2 keeps its fonts in
+            // common/fonts/fonts_med.res — not in the menu's own archive, as Project I.G.I.'s are.
+            // Without it every MenuText resolves to a null font and draws nothing, which is exactly
+            // what the first device test showed: backdrop, logo, frame and cursor, no entries.
+            ["LOCAL:menusystem/missionsprites.res", "LOCAL:common/fonts/fonts_med.res"],
             request.Input,
             request.Batch,
             request.ScreenWidth,
