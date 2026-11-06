@@ -176,9 +176,11 @@ public sealed class WebGpuPushRing : IDisposable
 
         // Written a whole slice at a time, zero-filled past the data: a uniform binding is sized to the
         // block, and leaving the tail at whatever the last frame put there would hand a shader values
-        // nobody wrote.
+        // nobody wrote. Only the tail is cleared: the bytes the push itself writes are overwritten by
+        // the copy that follows, so clearing them first is work thrown away at once -- a whole slice
+        // of it, thousands of times a frame.
         Span<byte> target = chunk.Shadow.AsSpan((int)offset, _slice);
-        target.Clear();
+        target[data.Length..].Clear();
         data.CopyTo(target);
         chunk.MarkWritten((int)offset, _slice);
 

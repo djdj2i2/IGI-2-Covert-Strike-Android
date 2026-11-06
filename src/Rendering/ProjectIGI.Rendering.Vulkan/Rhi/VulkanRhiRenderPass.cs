@@ -24,12 +24,19 @@ internal sealed unsafe class VulkanRhiRenderPassEncoder : IRhiRenderPassEncoder
     // What is bound now, so a draw that asks for the same again costs nothing. A frame's draws mostly
     // share a pipeline and their buffers, and each bind is a call through the loader into the driver:
     // with every draw re-binding everything, recording the shadow cascades alone took a quarter of the
-    // frame. Only what persists in a command buffer is remembered; push data changes with every draw.
+    // frame. Only what persists in a command buffer is remembered. Push data is remembered too, below:
+    // the 2D path pushes the same projection on every sprite, so a push that repeats the last one
+    // records nothing.
     private Pipeline _boundPipeline;
     private readonly DescriptorSet[] _boundSets = new DescriptorSet[8];
     private readonly (Silk.NET.Vulkan.Buffer Buffer, ulong Offset)[] _boundVertices = new (Silk.NET.Vulkan.Buffer, ulong)[8];
     private (Silk.NET.Vulkan.Buffer Buffer, ulong Offset, IndexType Type) _boundIndices;
     private VulkanRhiPipelineLayout? _layout;
+
+    // The last push's bytes. A push-constants command recorded for bytes already in place only grows
+    // the command buffer, and the driver still has to swallow it.
+    private readonly byte[] _lastPush = new byte[256];
+    private int _lastPushLength = -1;
 
     // Set only on the render pass path: a device that cannot begin a pass from its attachments begins one
     // from these instead. Both are owned by the device's cache, not by the pass, so they are never destroyed
@@ -78,10 +85,11 @@ internal sealed unsafe class VulkanRhiRenderPassEncoder : IRhiRenderPassEncoder
         VulkanRhiPipelineLayout layout = (VulkanRhiPipelineLayout)graphics.Layout;
 
         // A pipeline of another layout may disturb the sets already bound, so they are forgotten and bound
-        // again by whatever asks next.
+        // again by whatever asks next. Its push constants are undefined too, so the last push goes with them.
         if (!ReferenceEquals(layout, _layout))
         {
             Array.Clear(_boundSets);
+            _lastPushLength = -1;
         }
 
         _layout = layout;
@@ -136,6 +144,26 @@ internal sealed unsafe class VulkanRhiRenderPassEncoder : IRhiRenderPassEncoder
     public void SetPushData(ReadOnlySpan<byte> data, int offset = 0)
     {
         ThrowIfEnded();
+
+        // A full push that repeats the last one is already in place: recording it again only grows the
+        // command buffer. A partial push writes into the middle of the block, so it is never matched
+        // and the cache goes with it -- what the block holds after one is a merge this does not track.
+        // A push longer than the cache fits is likewise never matched.
+        if (offset == 0 && data.Length == _lastPushLength && data.Length <= _lastPush.Length
+            && data.SequenceEqual(_lastPush.AsSpan(0, _lastPushLength)))
+        {
+            return;
+        }
+
+        if (offset != 0 || data.Length > _lastPush.Length)
+        {
+            _lastPushLength = -1;
+        }
+        else
+        {
+            data.CopyTo(_lastPush);
+            _lastPushLength = data.Length;
+        }
 
         VulkanRhiPipelineLayout layout = Layout();
         fixed (byte* bytes = data)

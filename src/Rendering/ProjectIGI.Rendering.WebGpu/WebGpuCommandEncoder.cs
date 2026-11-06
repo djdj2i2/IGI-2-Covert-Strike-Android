@@ -39,8 +39,12 @@ public sealed unsafe class WebGpuCommandEncoder : IRhiCommandEncoder
         ThrowIfFinished();
 
         using WebGpuString label = new(descriptor.Label);
-        WGPURenderPassColorAttachment[] colours =
-            new WGPURenderPassColorAttachment[Math.Max(descriptor.ColorAttachments.Count, 1)];
+
+        // Stack rather than heap: the attachments are read only while the pass is begun, inside the
+        // fixed block below, and a pass carries one colour target -- four at the outside.
+        Span<WGPURenderPassColorAttachment> colours = descriptor.ColorAttachments.Count <= 4
+            ? stackalloc WGPURenderPassColorAttachment[Math.Max(descriptor.ColorAttachments.Count, 1)]
+            : new WGPURenderPassColorAttachment[descriptor.ColorAttachments.Count];
 
         for (int i = 0; i < descriptor.ColorAttachments.Count; i++)
         {
