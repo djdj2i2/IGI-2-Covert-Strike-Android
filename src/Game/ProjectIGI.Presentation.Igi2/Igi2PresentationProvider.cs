@@ -14,6 +14,7 @@ using ProjectIGI.Presentation.Rendering;
 using ProjectIGI.Game.Igi2;
 using ProjectIGI.Presentation.Igi2.ViewModel;
 using ProjectIGI.Presentation.Igi2.World;
+using ProjectIGI.Presentation.Igi2.Menus;
 
 namespace ProjectIGI.Presentation.Igi2;
 
@@ -49,6 +50,8 @@ public sealed class Igi2PresentationProvider : ITitlePresentationProvider
     /// <summary>Initializes a new instance of the <see cref="Igi2PresentationProvider"/> class.</summary>
     public Igi2PresentationProvider() =>
         Presenters = new PresenterRegistry()
+            .Add<RetailMenusRequest, IRetailMenus>(static (in RetailMenusRequest request) =>
+                new Igi2RetailMenus(request))
             .Add<HudPresentationRequest, ITitleHudPresenter>(CreateTitleHud)
             .Add<ViewModelPresentationRequest, ITitleViewModelPresenter>(CreateTitleViewModel)
             .Add<WorldPresentationRequest, IWorldPresenter>(CreateWorld)

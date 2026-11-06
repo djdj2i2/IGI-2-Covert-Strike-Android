@@ -41,6 +41,15 @@ public partial class MenuManagerTask
     /// <summary>Gets the screen stack and fade this manager drives.</summary>
     public MenuNavigator Navigator { get; } = new();
 
+    /// <summary>Changes the game's manager the navigation runs as.</summary>
+    /// <param name="dialect">The game's manager.</param>
+    /// <remarks>
+    /// Only between the menu script's load and <see cref="Initialize"/>: the script's top-level code only creates tasks,
+    /// so nothing has read the navigator yet, and <see cref="Initialize"/> captures it into the script context. A menu
+    /// loaded for another title takes its own numbering here.
+    /// </remarks>
+    public void SetDialect(MenuManagerDialect dialect) => Navigator.SetDialect(dialect);
+
     /// <summary>Gets the selection the pointer and the keys share.</summary>
     public MenuSelection Selection { get; } = new();
 
@@ -399,7 +408,11 @@ public partial class MenuManagerTask
     /// <summary>Resolves the constants a menu expression may name.</summary>
     /// <param name="name">The identifier.</param>
     /// <returns>The value, or <see langword="null"/> when it is not a constant.</returns>
-    public static int? ResolveConstant(string name)
+    /// <remarks>
+    /// The <c>MENUMANAGER_*</c> values are the game's own numbering: I.G.I. 2 starts its game at 14, not 13, and joins
+    /// one later still. A state the game does not number stays unknown, as before.
+    /// </remarks>
+    public int? ResolveConstant(string name)
     {
         foreach ((string colour, int value) in MenuTaskTypes.TextColours)
         {
@@ -413,13 +426,20 @@ public partial class MenuManagerTask
         {
             "TRUE" => 1,
             "FALSE" => 0,
-            "MENUMANAGER_IDLE" => (int)MenuManagerState.Idle,
-            "MENUMANAGER_QUIT" => (int)MenuManagerState.Quit,
-            "MENUMANAGER_QUITTOMAINMENU" => (int)MenuManagerState.QuitToMainMenu,
-            "MENUMANAGER_RESTARTLEVEL" => (int)MenuManagerState.RestartLevel,
-            "MENUMANAGER_STARTGAME" => (int)MenuManagerState.StartGame,
+            "MENUMANAGER_IDLE" => ManagerValue(MenuManagerState.Idle),
+            "MENUMANAGER_QUIT" => ManagerValue(MenuManagerState.Quit),
+            "MENUMANAGER_QUITTOMAINMENU" => ManagerValue(MenuManagerState.QuitToMainMenu),
+            "MENUMANAGER_RESTARTLEVEL" => ManagerValue(MenuManagerState.RestartLevel),
+            "MENUMANAGER_STARTGAME" => ManagerValue(MenuManagerState.StartGame),
+            "MENUMANAGER_JOINGAME" => ManagerValue(MenuManagerState.JoinGame),
             _ => null,
         };
+
+        int? ManagerValue(MenuManagerState state)
+        {
+            int value = Navigator.Dialect.ValueOf(state);
+            return value >= 0 ? value : null;
+        }
     }
 
     // 0x418710: the screen asked for, prepared and lined up, its data taken in only when it is entered afresh: a pop returns to a
