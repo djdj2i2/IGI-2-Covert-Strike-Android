@@ -193,8 +193,8 @@ public sealed partial class GameHost
 
         var painter = UiPainter.Create(state.Batch, new LayoutContext(SafeWindowWidth, SafeWindowHeight));
 
-        Bgra32 brightGreen = Bgra32.FromRgb(57, 227, 101);
-        Bgra32 darkBg = Bgra32.FromRgba(10, 24, 14, 235);
+        Bgra32 brightGreen = Bgra32.FromRgb(80, 160, 255);
+        Bgra32 darkBg = Bgra32.FromRgba(10, 20, 38, 235);
 
         // ── 1. Top-Right Tiny Gear Icon Button ──────────────────────────────
         painter.FillRect(new UiRect(gearX, gearY, gearW, gearH), darkBg);
@@ -233,10 +233,10 @@ public sealed partial class GameHost
         float kbH = 28f * scale;
         float kbX = gearX + ((gearW - kbW) * 0.5f);
         float kbY = gearY + gearH + (8f * scale);
-        painter.FillRect(new UiRect(kbX, kbY, kbW, kbH), KeyboardRequested ? brightGreen : Bgra32.FromRgba(16, 44, 22, 245));
+        painter.FillRect(new UiRect(kbX, kbY, kbW, kbH), KeyboardRequested ? brightGreen : Bgra32.FromRgba(18, 32, 60, 245));
         painter.StrokeRect(new UiRect(kbX, kbY, kbW, kbH), 2f * scale, brightGreen);
         // Two rows of keys and a spacebar. Dark keys when highlighted, bright green otherwise.
-        Bgra32 keyColor = KeyboardRequested ? Bgra32.FromRgb(10, 24, 14) : brightGreen;
+        Bgra32 keyColor = KeyboardRequested ? Bgra32.FromRgb(10, 20, 38) : brightGreen;
         float key = 3f * scale;
         float keyGap = 2f * scale;
         float keysW = (4f * key) + (3f * keyGap);
@@ -268,12 +268,12 @@ public sealed partial class GameHost
             float modalY = (height - modalH) * 0.5f;
 
             // Main modal box
-            painter.FillRect(new UiRect(modalX, modalY, modalW, modalH), Bgra32.FromRgba(8, 18, 11, 252));
+            painter.FillRect(new UiRect(modalX, modalY, modalW, modalH), Bgra32.FromRgba(8, 14, 28, 252));
             painter.StrokeRect(new UiRect(modalX, modalY, modalW, modalH), 2f * scale, brightGreen);
 
             // Modal Title Bar
             float barH = 46f * scale;
-            painter.FillRect(new UiRect(modalX, modalY, modalW, barH), Bgra32.FromRgba(16, 44, 22, 240));
+            painter.FillRect(new UiRect(modalX, modalY, modalW, barH), Bgra32.FromRgba(18, 32, 60, 240));
             painter.FillRect(new UiRect(modalX, modalY + barH, modalW, 1.5f * scale), brightGreen);
 
             if (_shellType is { } type)
@@ -295,14 +295,14 @@ public sealed partial class GameHost
                 if (_shellType is { } tp)
                 {
                     painter.DrawText(tp.Heading, title, new UiVec2(textX, rowY + (4f * scale)), 15f * scale, Bgra32.White);
-                    painter.DrawText(tp.Mono, subtitle, new UiVec2(textX, rowY + (25f * scale)), 11f * scale, Bgra32.FromRgb(140, 185, 140));
+                    painter.DrawText(tp.Mono, subtitle, new UiVec2(textX, rowY + (25f * scale)), 11f * scale, Bgra32.FromRgb(150, 180, 220));
                 }
 
                 UiRect bRect = new(btnX, rowY + (4f * scale), btnW, btnH);
                 if (active)
                 {
-                    painter.FillRect(bRect, Bgra32.FromRgb(40, 160, 60));
-                    painter.StrokeRect(bRect, 1.5f * scale, Bgra32.FromRgb(120, 255, 140));
+                    painter.FillRect(bRect, Bgra32.FromRgb(60, 130, 220));
+                    painter.StrokeRect(bRect, 1.5f * scale, Bgra32.FromRgb(140, 200, 255));
                     if (_shellType is { } tpAct)
                     {
                         painter.DrawText(tpAct.Mono, $"[ {activeText} ]", new UiVec2(btnX + (26f * scale), rowY + (13f * scale)), 14f * scale, Bgra32.White);
@@ -310,11 +310,11 @@ public sealed partial class GameHost
                 }
                 else
                 {
-                    painter.FillRect(bRect, Bgra32.FromRgba(25, 35, 25, 200));
-                    painter.StrokeRect(bRect, 1f * scale, Bgra32.FromRgb(60, 90, 65));
+                    painter.FillRect(bRect, Bgra32.FromRgba(25, 32, 50, 200));
+                    painter.StrokeRect(bRect, 1f * scale, Bgra32.FromRgb(70, 100, 140));
                     if (_shellType is { } tpInact)
                     {
-                        painter.DrawText(tpInact.Mono, $"[ {inactiveText} ]", new UiVec2(btnX + (23f * scale), rowY + (13f * scale)), 14f * scale, Bgra32.FromRgb(110, 140, 115));
+                        painter.DrawText(tpInact.Mono, $"[ {inactiveText} ]", new UiVec2(btnX + (23f * scale), rowY + (13f * scale)), 14f * scale, Bgra32.FromRgb(140, 165, 200));
                     }
                 }
             }
@@ -330,7 +330,7 @@ public sealed partial class GameHost
             float closeX = modalX + ((modalW - closeW) * 0.5f);
             float closeY = modalY + modalH - closeH - (14f * scale);
             UiRect cRect = new(closeX, closeY, closeW, closeH);
-            painter.FillRect(cRect, Bgra32.FromRgba(18, 38, 22, 230));
+            painter.FillRect(cRect, Bgra32.FromRgba(18, 32, 60, 230));
             painter.StrokeRect(cRect, 1.5f * scale, brightGreen);
             if (_shellType is { } tpClose)
             {

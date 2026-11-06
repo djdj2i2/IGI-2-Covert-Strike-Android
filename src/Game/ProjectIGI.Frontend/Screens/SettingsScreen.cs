@@ -322,8 +322,8 @@ public sealed class SettingsScreen : ShellScreen
             TextSize = 30f,
             Height = 60f,
             Width = 180f,
-            NormalColor = Bgra32.FromRgb(60, 230, 95),
-            HoverColor = Bgra32.FromRgb(220, 255, 220),
+            NormalColor = Bgra32.FromRgb(80, 160, 255),
+            HoverColor = Bgra32.FromRgb(228, 238, 252),
         };
         okBtn.Activated += () =>
         {
@@ -337,8 +337,8 @@ public sealed class SettingsScreen : ShellScreen
             TextSize = 30f,
             Height = 60f,
             Width = 180f,
-            NormalColor = Bgra32.FromRgb(60, 230, 95),
-            HoverColor = Bgra32.FromRgb(220, 255, 220),
+            NormalColor = Bgra32.FromRgb(80, 160, 255),
+            HoverColor = Bgra32.FromRgb(228, 238, 252),
         };
         cancelBtn.Activated += () =>
         {

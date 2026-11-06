@@ -20,49 +20,49 @@ namespace ProjectIGI.UI.Widgets;
 public static class UiPalette
 {
     /// <summary>The page behind everything: <c>#080C07</c>.</summary>
-    public static Bgra32 Backdrop => Bgra32.FromRgb(8, 12, 7);
+    public static Bgra32 Backdrop => Bgra32.FromRgb(8, 10, 18);
 
     /// <summary>The base of a stage, and the dark text punched out of an accent fill: <c>#090E08</c>.</summary>
-    public static Bgra32 Ink => Bgra32.FromRgb(9, 14, 8);
+    public static Bgra32 Ink => Bgra32.FromRgb(9, 14, 28);
 
     /// <summary>The accent: military phosphor green <c>#4EFF78</c>.</summary>
-    public static Bgra32 Accent => Bgra32.FromRgb(78, 255, 120);
+    public static Bgra32 Accent => Bgra32.FromRgb(80, 160, 255);
 
     /// <summary>A hovered accent fill: <c>#7DFF9B</c>.</summary>
-    public static Bgra32 AccentHover => Bgra32.FromRgb(125, 255, 155);
+    public static Bgra32 AccentHover => Bgra32.FromRgb(160, 195, 245);
 
     /// <summary>A hovered accent link or text: <c>#A5FFB9</c>.</summary>
-    public static Bgra32 AccentLight => Bgra32.FromRgb(165, 255, 185);
+    public static Bgra32 AccentLight => Bgra32.FromRgb(170, 210, 250);
 
     /// <summary>Selected and hovered text: white.</summary>
     public static Bgra32 TextBright => Bgra32.White;
 
     /// <summary>Primary text: <c>#D8EDD2</c>.</summary>
-    public static Bgra32 Text => Bgra32.FromRgb(216, 237, 210);
+    public static Bgra32 Text => Bgra32.FromRgb(220, 232, 245);
 
     /// <summary>A settings row's caption: <c>#BFDBB8</c>.</summary>
-    public static Bgra32 TextLabel => Bgra32.FromRgb(191, 219, 184);
+    public static Bgra32 TextLabel => Bgra32.FromRgb(200, 215, 235);
 
     /// <summary>Prose: a briefing, a description: <c>#A8C7A0</c>.</summary>
-    public static Bgra32 TextBody => Bgra32.FromRgb(168, 199, 160);
+    public static Bgra32 TextBody => Bgra32.FromRgb(180, 200, 225);
 
     /// <summary>An unselected name in a list: <c>#8DB385</c>.</summary>
-    public static Bgra32 TextSecondary => Bgra32.FromRgb(141, 179, 133);
+    public static Bgra32 TextSecondary => Bgra32.FromRgb(155, 180, 210);
 
     /// <summary>An inactive segment or a hint's label: <c>#74996C</c>.</summary>
-    public static Bgra32 TextTertiary => Bgra32.FromRgb(116, 153, 108);
+    public static Bgra32 TextTertiary => Bgra32.FromRgb(130, 160, 195);
 
     /// <summary>A caption, an inactive tab, a chevron: <c>#5E8256</c>.</summary>
-    public static Bgra32 TextMuted => Bgra32.FromRgb(94, 130, 86);
+    public static Bgra32 TextMuted => Bgra32.FromRgb(110, 140, 175);
 
     /// <summary>A dim mark: an arrow, an empty slot, the off side of a toggle: <c>#4A6B43</c>.</summary>
-    public static Bgra32 TextDim => Bgra32.FromRgb(74, 107, 67);
+    public static Bgra32 TextDim => Bgra32.FromRgb(95, 125, 160);
 
     /// <summary>Something that cannot be used: <c>#344F30</c>.</summary>
-    public static Bgra32 TextDisabled => Bgra32.FromRgb(52, 79, 48);
+    public static Bgra32 TextDisabled => Bgra32.FromRgb(75, 100, 135);
 
     /// <summary>Success, ready, a fix: <c>#4EFF78</c>.</summary>
-    public static Bgra32 Success => Bgra32.FromRgb(78, 255, 120);
+    public static Bgra32 Success => Bgra32.FromRgb(80, 160, 255);
 
     /// <summary>Information, a plugin, a change: <c>#72C2FF</c>.</summary>
     public static Bgra32 Info => Bgra32.FromRgb(114, 194, 255);
@@ -82,32 +82,32 @@ public static class UiPalette
     /// <summary>A destructive action's hover wash: <c>rgba(255,77,64,.12)</c>.</summary>
     public static Bgra32 DestructiveWash => Bgra32.FromRgba(255, 77, 64, 31);
 
-    /// <summary>A glass panel's tint: tactical olive glass <c>rgba(8,16,8,.75)</c>.</summary>
-    public static Bgra32 Glass => Bgra32.FromRgba(8, 16, 8, 192);
+    /// <summary>A glass panel's tint: tactical olive glass <c>rgba(8, 16, 30,.75)</c>.</summary>
+    public static Bgra32 Glass => Bgra32.FromRgba(8, 16, 30, 192);
 
-    /// <summary>A denser glass, for a panel holding a list: <c>rgba(6,12,6,.82)</c>.</summary>
-    public static Bgra32 GlassDense => Bgra32.FromRgba(6, 12, 6, 210);
+    /// <summary>A denser glass, for a panel holding a list: <c>rgba(6, 12, 22,.82)</c>.</summary>
+    public static Bgra32 GlassDense => Bgra32.FromRgba(6, 12, 22, 210);
 
-    /// <summary>A floating menu's glass: <c>rgba(6,12,6,.95)</c>.</summary>
-    public static Bgra32 GlassMenu => Bgra32.FromRgba(6, 12, 6, 242);
+    /// <summary>A floating menu's glass: <c>rgba(6, 12, 22,.95)</c>.</summary>
+    public static Bgra32 GlassMenu => Bgra32.FromRgba(6, 12, 22, 242);
 
     /// <summary>A panel's hairline border: phosphor green at .15.</summary>
-    public static Bgra32 Hairline => Bgra32.FromRgba(78, 255, 120, 38);
+    public static Bgra32 Hairline => Bgra32.FromRgba(80, 160, 255, 38);
 
     /// <summary>A header or footer rule: phosphor green at .18.</summary>
-    public static Bgra32 Rule => Bgra32.FromRgba(78, 255, 120, 46);
+    public static Bgra32 Rule => Bgra32.FromRgba(80, 160, 255, 46);
 
     /// <summary>A row's hover wash: phosphor green at .06.</summary>
-    public static Bgra32 HoverWash => Bgra32.FromRgba(78, 255, 120, 15);
+    public static Bgra32 HoverWash => Bgra32.FromRgba(80, 160, 255, 15);
 
     /// <summary>A slider's or progress bar's empty track: phosphor green at .12.</summary>
-    public static Bgra32 Track => Bgra32.FromRgba(78, 255, 120, 31);
+    public static Bgra32 Track => Bgra32.FromRgba(80, 160, 255, 31);
 
     /// <summary>A ghost button's border: phosphor green at .25.</summary>
-    public static Bgra32 GhostBorder => Bgra32.FromRgba(78, 255, 120, 64);
+    public static Bgra32 GhostBorder => Bgra32.FromRgba(80, 160, 255, 64);
 
     /// <summary>A key cap's border: phosphor green at .2.</summary>
-    public static Bgra32 KeyBorder => Bgra32.FromRgba(78, 255, 120, 51);
+    public static Bgra32 KeyBorder => Bgra32.FromRgba(80, 160, 255, 51);
 
     /// <summary>White at an opacity — the design's hairlines and washes are all this.</summary>
     /// <param name="alpha">The opacity, 0 to 1.</param>

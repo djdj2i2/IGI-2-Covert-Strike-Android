@@ -82,13 +82,13 @@ public sealed class CheatsScreen : ShellScreen
             TextSize = 34f,
             Height = 72f,
             Width = 840f,
-            NormalColor = PlayerCheatCVars.UnlockAllLevels.Value ? Bgra32.FromRgb(78, 255, 120) : Bgra32.FromRgb(150, 180, 150),
+            NormalColor = PlayerCheatCVars.UnlockAllLevels.Value ? Bgra32.FromRgb(80, 160, 255) : Bgra32.FromRgb(140, 165, 200),
         };
         _unlockBtn.Activated += () =>
         {
             PlayerCheatCVars.UnlockAllLevels.Value = !PlayerCheatCVars.UnlockAllLevels.Value;
             _unlockBtn.Text = GetUnlockText();
-            _unlockBtn.NormalColor = PlayerCheatCVars.UnlockAllLevels.Value ? Bgra32.FromRgb(78, 255, 120) : Bgra32.FromRgb(150, 180, 150);
+            _unlockBtn.NormalColor = PlayerCheatCVars.UnlockAllLevels.Value ? Bgra32.FromRgb(80, 160, 255) : Bgra32.FromRgb(140, 165, 200);
         };
         stack.AddChild(_unlockBtn);
 
@@ -98,13 +98,13 @@ public sealed class CheatsScreen : ShellScreen
             TextSize = 34f,
             Height = 72f,
             Width = 840f,
-            NormalColor = PlayerCheatCVars.InfiniteAmmo.Value ? Bgra32.FromRgb(78, 255, 120) : Bgra32.FromRgb(150, 180, 150),
+            NormalColor = PlayerCheatCVars.InfiniteAmmo.Value ? Bgra32.FromRgb(80, 160, 255) : Bgra32.FromRgb(140, 165, 200),
         };
         _ammoBtn.Activated += () =>
         {
             PlayerCheatCVars.InfiniteAmmo.Value = !PlayerCheatCVars.InfiniteAmmo.Value;
             _ammoBtn.Text = GetAmmoText();
-            _ammoBtn.NormalColor = PlayerCheatCVars.InfiniteAmmo.Value ? Bgra32.FromRgb(78, 255, 120) : Bgra32.FromRgb(150, 180, 150);
+            _ammoBtn.NormalColor = PlayerCheatCVars.InfiniteAmmo.Value ? Bgra32.FromRgb(80, 160, 255) : Bgra32.FromRgb(140, 165, 200);
         };
         stack.AddChild(_ammoBtn);
 
@@ -114,13 +114,13 @@ public sealed class CheatsScreen : ShellScreen
             TextSize = 34f,
             Height = 72f,
             Width = 840f,
-            NormalColor = PlayerCheatCVars.InfiniteHealth.Value ? Bgra32.FromRgb(78, 255, 120) : Bgra32.FromRgb(150, 180, 150),
+            NormalColor = PlayerCheatCVars.InfiniteHealth.Value ? Bgra32.FromRgb(80, 160, 255) : Bgra32.FromRgb(140, 165, 200),
         };
         _damageBtn.Activated += () =>
         {
             PlayerCheatCVars.InfiniteHealth.Value = !PlayerCheatCVars.InfiniteHealth.Value;
             _damageBtn.Text = GetDamageText();
-            _damageBtn.NormalColor = PlayerCheatCVars.InfiniteHealth.Value ? Bgra32.FromRgb(78, 255, 120) : Bgra32.FromRgb(150, 180, 150);
+            _damageBtn.NormalColor = PlayerCheatCVars.InfiniteHealth.Value ? Bgra32.FromRgb(80, 160, 255) : Bgra32.FromRgb(140, 165, 200);
         };
         stack.AddChild(_damageBtn);
 
@@ -130,13 +130,13 @@ public sealed class CheatsScreen : ShellScreen
             TextSize = 34f,
             Height = 72f,
             Width = 840f,
-            NormalColor = PlayerCheatCVars.AllWeapons.Value ? Bgra32.FromRgb(78, 255, 120) : Bgra32.FromRgb(150, 180, 150),
+            NormalColor = PlayerCheatCVars.AllWeapons.Value ? Bgra32.FromRgb(80, 160, 255) : Bgra32.FromRgb(140, 165, 200),
         };
         _weaponsBtn.Activated += () =>
         {
             PlayerCheatCVars.AllWeapons.Value = !PlayerCheatCVars.AllWeapons.Value;
             _weaponsBtn.Text = GetWeaponsText();
-            _weaponsBtn.NormalColor = PlayerCheatCVars.AllWeapons.Value ? Bgra32.FromRgb(78, 255, 120) : Bgra32.FromRgb(150, 180, 150);
+            _weaponsBtn.NormalColor = PlayerCheatCVars.AllWeapons.Value ? Bgra32.FromRgb(80, 160, 255) : Bgra32.FromRgb(140, 165, 200);
         };
         stack.AddChild(_weaponsBtn);
 
@@ -157,8 +157,8 @@ public sealed class CheatsScreen : ShellScreen
             TextSize = 30f,
             Height = 60f,
             Width = 180f,
-            NormalColor = Bgra32.FromRgb(60, 230, 95),
-            HoverColor = Bgra32.FromRgb(220, 255, 220),
+            NormalColor = Bgra32.FromRgb(80, 160, 255),
+            HoverColor = Bgra32.FromRgb(228, 238, 252),
         };
         okBtn.Activated += () => Context.Stack.Reset(new MainMenuScreen(Context));
         btnBar.Add(okBtn);
@@ -168,8 +168,8 @@ public sealed class CheatsScreen : ShellScreen
             TextSize = 30f,
             Height = 60f,
             Width = 180f,
-            NormalColor = Bgra32.FromRgb(60, 230, 95),
-            HoverColor = Bgra32.FromRgb(220, 255, 220),
+            NormalColor = Bgra32.FromRgb(80, 160, 255),
+            HoverColor = Bgra32.FromRgb(228, 238, 252),
         };
         backBtn.Activated += () => Context.Stack.Reset(new MainMenuScreen(Context));
         btnBar.Add(backBtn);

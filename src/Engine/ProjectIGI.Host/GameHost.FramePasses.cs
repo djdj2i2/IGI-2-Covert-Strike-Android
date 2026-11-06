@@ -675,7 +675,7 @@ public sealed partial class GameHost
         // Subtle drop shadow for high readability on any background
         painter.DrawText(type.Mono, text, new UiVec2(x + 1.5f, y + 1.5f), fontSize, Bgra32.Black);
         // Tactical phosphor green text
-        painter.DrawText(type.Mono, text, new UiVec2(x, y), fontSize, Bgra32.FromRgb(57, 227, 101));
+        painter.DrawText(type.Mono, text, new UiVec2(x, y), fontSize, Bgra32.FromRgb(80, 160, 255));
 
         state.Batch.End();
         _device.EndStageTiming();

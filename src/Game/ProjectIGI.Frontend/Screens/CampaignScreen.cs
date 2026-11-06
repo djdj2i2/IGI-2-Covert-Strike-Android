@@ -204,8 +204,8 @@ public sealed class CampaignScreen : ShellScreen
             TextSize = 32f,
             Height = 54f,
             Width = 140f,
-            NormalColor = Bgra32.FromRgb(60, 230, 95),
-            HoverColor = Bgra32.FromRgb(220, 255, 220),
+            NormalColor = Bgra32.FromRgb(80, 160, 255),
+            HoverColor = Bgra32.FromRgb(228, 238, 252),
         };
         okBtn.Activated += () =>
         {
@@ -219,8 +219,8 @@ public sealed class CampaignScreen : ShellScreen
             TextSize = 32f,
             Height = 54f,
             Width = 140f,
-            NormalColor = Bgra32.FromRgb(60, 230, 95),
-            HoverColor = Bgra32.FromRgb(220, 255, 220),
+            NormalColor = Bgra32.FromRgb(80, 160, 255),
+            HoverColor = Bgra32.FromRgb(228, 238, 252),
         };
         cancelBtn.Activated += () => Context.Stack.Reset(new MainMenuScreen(Context));
         btnBar.AddChild(cancelBtn);
@@ -362,7 +362,7 @@ internal sealed class TacticalWireframeBox : UiElement
         }
 
         // 1. Dark tactical background
-        painter.FillRect(b, Bgra32.FromRgb(6, 14, 8));
+        painter.FillRect(b, Bgra32.FromRgb(8, 10, 18));
 
         // 2. Mission thumbnail image from Project IGI assets
         if (!_thumbnail.IsValid && _theme.ImageFactory is not null)
@@ -377,7 +377,7 @@ internal sealed class TacticalWireframeBox : UiElement
 
         // 3. Green wireframe border over/around the preview
         float stroke = painter.Context.Px(1.5f);
-        Bgra32 green = Bgra32.FromRgb(60, 220, 95);
+        Bgra32 green = Bgra32.FromRgb(80, 160, 255);
         painter.StrokeRect(b, stroke, green);
 
         // Corner tick marks
@@ -400,13 +400,13 @@ internal sealed class TacticalWireframeBox : UiElement
             float cx = b.X + (b.Width * 0.5f);
             float cy = b.Y + (b.Height * 0.5f);
             float arm = painter.Context.Px(24f);
-            painter.StrokeSoft(new UiVec2(cx - arm, cy), new UiVec2(cx + arm, cy), stroke, Bgra32.FromRgba(60, 220, 95, 120));
-            painter.StrokeSoft(new UiVec2(cx, cy - arm), new UiVec2(cx, cy + arm), stroke, Bgra32.FromRgba(60, 220, 95, 120));
+            painter.StrokeSoft(new UiVec2(cx - arm, cy), new UiVec2(cx + arm, cy), stroke, Bgra32.FromRgba(80, 160, 255, 120));
+            painter.StrokeSoft(new UiVec2(cx, cy - arm), new UiVec2(cx, cy + arm), stroke, Bgra32.FromRgba(80, 160, 255, 120));
 
             string text = "[ TACTICAL RECON ]";
             float size = painter.Context.Px(18f);
             float tw = _theme.Mono.Measure(text, size).X;
-            painter.DrawText(_theme.Mono, text, new UiVec2(cx - (tw * 0.5f), cy + arm + painter.Context.Px(12f)), size, Bgra32.FromRgba(78, 255, 120, 180));
+            painter.DrawText(_theme.Mono, text, new UiVec2(cx - (tw * 0.5f), cy + arm + painter.Context.Px(12f)), size, Bgra32.FromRgba(80, 160, 255, 180));
         }
     }
 }

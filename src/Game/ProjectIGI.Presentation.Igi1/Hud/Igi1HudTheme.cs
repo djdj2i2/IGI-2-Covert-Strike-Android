@@ -16,7 +16,7 @@ namespace ProjectIGI.Presentation.Igi1.Hud;
 /// </summary>
 public static class Igi1HudTheme
 {
-    private static readonly Bgra32 Phosphor = Bgra32.FromRgba(78, 255, 120, 255);
+    private static readonly Bgra32 Phosphor = Bgra32.FromRgba(80, 160, 255, 255);
 
     /// <summary>How far over a soldier's feet his eye is marked, in world units: 2.15 m, a hand over a standing head.</summary>
     public const double OverHead = 8806.4;
@@ -28,11 +28,11 @@ public static class Igi1HudTheme
         UiScale.AuthoredHeight,
         new HudPalette(
             Primary: Phosphor,
-            Dim: Bgra32.FromRgba(26, 120, 52, 210),
-            Highlight: Bgra32.FromRgba(205, 255, 214, 255),
+            Dim: Bgra32.FromRgba(30, 90, 180, 210),
+            Highlight: Bgra32.FromRgba(228, 238, 252, 255),
             Accent: Bgra32.FromRgba(255, 182, 64, 255),
             Danger: Bgra32.FromRgba(255, 62, 48, 255),
-            Glass: Bgra32.FromRgba(4, 30, 12, 70),
+            Glass: Bgra32.FromRgba(8, 20, 45, 70),
             Health: Health,
             Visibility: static _ => Phosphor),
         new HudMotifs(HudCorner.Cut, CornerSize: 8f, Hairline: 1f, BracketLength: 8f, Shimmer: false, DoubleRules: false),

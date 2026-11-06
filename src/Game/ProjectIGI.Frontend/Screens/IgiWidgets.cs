@@ -108,7 +108,7 @@ public sealed class IgiLogo : UiElement
         string sub = "P  R  O  J  E  C  T";
         float subSize = painter.Context.Px(20f);
         float subW = _theme.Heading.Measure(sub, subSize).X;
-        painter.DrawText(_theme.Heading, sub, new UiVec2(cx - (subW * 0.5f), b.Y + painter.Context.Px(4f)), subSize, Bgra32.FromRgb(200, 230, 200));
+        painter.DrawText(_theme.Heading, sub, new UiVec2(cx - (subW * 0.5f), b.Y + painter.Context.Px(4f)), subSize, Bgra32.FromRgb(200, 215, 240));
 
         // "I . G . I ."
         string title = "I . G . I .";
@@ -119,12 +119,12 @@ public sealed class IgiLogo : UiElement
         // Drop shadow
         painter.DrawText(_theme.Display, title, new UiVec2(titlePos.X + 3f, titlePos.Y + 3f), titleSize, Bgra32.FromRgba(0, 0, 0, 200));
         // Main metallic / green text
-        painter.DrawText(_theme.Display, title, titlePos, titleSize, Bgra32.FromRgb(220, 250, 220));
+        painter.DrawText(_theme.Display, title, titlePos, titleSize, Bgra32.FromRgb(228, 238, 252));
 
         // "V1.0"
         string ver = "V1.0";
         float verSize = painter.Context.Px(18f);
-        painter.DrawText(_theme.Mono, ver, new UiVec2(titlePos.X + titleW + painter.Context.Px(8f), titlePos.Y + painter.Context.Px(36f)), verSize, Bgra32.FromRgb(125, 255, 155));
+        painter.DrawText(_theme.Mono, ver, new UiVec2(titlePos.X + titleW + painter.Context.Px(8f), titlePos.Y + painter.Context.Px(36f)), verSize, Bgra32.FromRgb(160, 195, 245));
     }
 }
 
@@ -134,10 +134,10 @@ public sealed class IgiLogo : UiElement
 public class IgiBorderedBox : Panel
 {
     /// <summary>Gets or sets the border line color.</summary>
-    public Bgra32 BorderColor { get; set; } = Bgra32.FromRgb(60, 220, 95);
+    public Bgra32 BorderColor { get; set; } = Bgra32.FromRgb(80, 160, 255);
 
     /// <summary>Gets or sets the background fill color.</summary>
-    public Bgra32 BackgroundColor { get; set; } = Bgra32.FromRgba(6, 14, 8, 200);
+    public Bgra32 BackgroundColor { get; set; } = Bgra32.FromRgba(8, 10, 18, 200);
 
     /// <summary>Gets or sets the border stroke width.</summary>
     public float StrokeWidth { get; set; } = 1.5f;
@@ -182,10 +182,10 @@ public class IgiTacticalFrame : Panel
     public float HeaderHeight { get; set; } = 48f;
 
     /// <summary>Gets or sets the border line color.</summary>
-    public Bgra32 BorderColor { get; set; } = Bgra32.FromRgb(60, 225, 95);
+    public Bgra32 BorderColor { get; set; } = Bgra32.FromRgb(80, 160, 255);
 
     /// <summary>Gets or sets the background fill color.</summary>
-    public Bgra32 BackgroundColor { get; set; } = Bgra32.FromRgba(8, 16, 10, 240);
+    public Bgra32 BackgroundColor { get; set; } = Bgra32.FromRgba(8, 16, 30, 240);
 
     /// <inheritdoc/>
     protected override UiVec2 MeasureContent(LayoutContext context, UiVec2 available)
@@ -265,10 +265,10 @@ public class IgiMenuButton : Control
     public float TextSize { get; set; } = 32f;
 
     /// <summary>Gets or sets text color when normal.</summary>
-    public Bgra32 NormalColor { get; set; } = Bgra32.FromRgb(75, 245, 115);
+    public Bgra32 NormalColor { get; set; } = Bgra32.FromRgb(80, 160, 255);
 
     /// <summary>Gets or sets text color when hovered or focused.</summary>
-    public Bgra32 HoverColor { get; set; } = Bgra32.FromRgb(240, 255, 240);
+    public Bgra32 HoverColor { get; set; } = Bgra32.FromRgb(228, 238, 252);
 
     /// <inheritdoc/>
     public override UiRect PointerBounds => Bounds.IsEmpty ? Bounds : Bounds.Inflate(new Thickness(6f, 4f));
@@ -307,12 +307,12 @@ public class IgiMenuButton : Control
         if (isHovered)
         {
             // Subtle tactical wash and green outline on hover/focus/tap for visual touch feedback
-            painter.FillRect(b, Bgra32.FromRgba(78, 255, 120, 45));
-            painter.StrokeRect(b, painter.Context.Px(1.5f), Bgra32.FromRgb(78, 255, 120));
+            painter.FillRect(b, Bgra32.FromRgba(80, 160, 255, 45));
+            painter.StrokeRect(b, painter.Context.Px(1.5f), Bgra32.FromRgb(80, 160, 255));
 
             // Glowing text
-            painter.DrawText(_theme.Heading, Text, new UiVec2(tx, ty - 1f), size, Bgra32.FromRgba(78, 255, 120, 110));
-            painter.DrawText(_theme.Heading, Text, new UiVec2(tx, ty + 1f), size, Bgra32.FromRgba(78, 255, 120, 110));
+            painter.DrawText(_theme.Heading, Text, new UiVec2(tx, ty - 1f), size, Bgra32.FromRgba(80, 160, 255, 110));
+            painter.DrawText(_theme.Heading, Text, new UiVec2(tx, ty + 1f), size, Bgra32.FromRgba(80, 160, 255, 110));
             painter.DrawText(_theme.Heading, Text, new UiVec2(tx, ty), size, HoverColor);
         }
         else
@@ -386,18 +386,18 @@ public sealed class IgiMissionRow : Control
         if (IsSelected)
         {
             // Solid bright phosphor green selection bar
-            painter.FillRect(b, Bgra32.FromRgb(55, 235, 95));
+            painter.FillRect(b, Bgra32.FromRgb(80, 160, 255));
             // Dark military text on green
-            painter.DrawText(_theme.Heading, Title, new UiVec2(b.X + padX, ty), size, Bgra32.FromRgb(10, 20, 12));
+            painter.DrawText(_theme.Heading, Title, new UiVec2(b.X + padX, ty), size, Bgra32.FromRgb(10, 16, 30));
         }
         else
         {
             if (IsPointerOver || Visual.Focus > 0.05f)
             {
-                painter.FillRect(b, Bgra32.FromRgba(60, 220, 95, 40));
+                painter.FillRect(b, Bgra32.FromRgba(80, 160, 255, 40));
             }
             // Green text
-            painter.DrawText(_theme.Heading, Title, new UiVec2(b.X + padX, ty), size, Bgra32.FromRgb(75, 235, 115));
+            painter.DrawText(_theme.Heading, Title, new UiVec2(b.X + padX, ty), size, Bgra32.FromRgb(80, 160, 255));
         }
     }
 }
