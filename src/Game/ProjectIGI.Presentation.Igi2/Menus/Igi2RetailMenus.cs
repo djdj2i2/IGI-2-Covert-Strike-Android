@@ -118,6 +118,24 @@ internal sealed class Igi2RetailMenus : IRetailMenus
             saves,
             request.Logger,
             request.Configuration);
+
+        // The graphics screens' live values: the renderer's name for the device list, the
+        // render-scale tier for the resolution list, and the applier OK runs to push the filed
+        // options to the live stores and write settings.cfg. The record is seeded from the
+        // live stores first, so the screen shows what the game is actually using rather than
+        // what config.qvm last said — the mapped options have no writer for that file, so
+        // after a relaunch the two disagree until the seed.
+        configuration.ConfigureGraphics(
+            request.Device.Capabilities.Renderer,
+            () => Igi2GraphicsApplier.RenderScaleTier,
+            tier => Igi2GraphicsApplier.RenderScaleTier = tier);
+        config.ApplyGraphics = applied =>
+        {
+            Igi2GraphicsApplier.Apply(applied);
+            request.SaveSettings?.Invoke();
+        };
+        Igi2GraphicsApplier.SyncFromLive(config);
+
         menu.Manager.Configuration = configuration;
 
         // The mission screen's OK button starts whatever id the list holds, so the lock is enforced

@@ -40,6 +40,7 @@ public sealed record RetailMenuDisplay(
 /// <param name="Services">The title's published tables, which the menus' configuration reads, or <see langword="null"/> when the title publishes none.</param>
 /// <param name="Leave">What leaving the menus does: <see langword="true"/> to start the chosen mission, <see langword="false"/> to quit.</param>
 /// <param name="Logger">Where diagnostics go.</param>
+/// <param name="SaveSettings">What writes the saved settings, or <see langword="null"/> when the menus run without a settings file to write.</param>
 public readonly record struct RetailMenusRequest(
     IGraphicsDevice Device,
     VirtualFileSystem FileSystem,
@@ -58,7 +59,8 @@ public readonly record struct RetailMenusRequest(
     Func<string, ScriptArguments, QvmValue?> ExternalNatives,
     IServiceCatalog? Services,
     Action<bool> Leave,
-    IProjectIGILogger Logger);
+    IProjectIGILogger Logger,
+    Action? SaveSettings = null);
 
 /// <summary>A title's own retail menus: its menu script run in the loop, its screens drawn, its pointer and keys read.</summary>
 public interface IRetailMenus : IDisposable
