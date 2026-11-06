@@ -22,6 +22,9 @@ public enum BinocularMarkerColor
 
     /// <summary>The <c>+3317</c> non-collidable flag — the retail blue rectangle.</summary>
     Disabled,
+
+    /// <summary>A living hostile seen in infrared — the thermal goggles' glowing yellow figure.</summary>
+    Thermal,
 }
 
 /// <summary>One projected enemy rectangle emitted by the native binocular detector.</summary>

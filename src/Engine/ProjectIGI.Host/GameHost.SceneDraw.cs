@@ -440,7 +440,7 @@ public sealed partial class GameHost
 
         // Rain environmental particles for levels featuring rain weather (e.g. RainEffect task).
         // While the camera is inside a building's shell the rain is suppressed, exactly as the
-        // reference editor does per frame � buildings keep the weather outside.
+        // reference editor does per frame  buildings keep the weather outside.
         _stormEyeMetres = eye.Position;
         if (_storm is { } liveStorm)
         {
@@ -552,9 +552,11 @@ public sealed partial class GameHost
         // pass and for the same reason as the inspector selection below: submitted from the world
         // pass it would be lit and fogged into a smear. Here it composites over the finished
         // scene and is carried into the resolve, so the lens and bloom pick it up. Only while the
-        // remastered optics are up.
-        if (remasteredOptics
-            && HudCVars.BinocularOutline.Value
+        // remastered optics are up — or while the title player's thermal goggles are up, which
+        // is the retail TID: living targets glow through cover on the retail HUD too, and
+        // Android runs Vanilla, where the remastered optics never are.
+        bool titleInfrared = TitleOptics is { IsInfrared: true };
+        if ((remasteredOptics && HudCVars.BinocularOutline.Value || titleInfrared)
             && BinocularsOpen)
         {
             // Whom a title's own player's binoculars picked out, highlighted by what draws them.

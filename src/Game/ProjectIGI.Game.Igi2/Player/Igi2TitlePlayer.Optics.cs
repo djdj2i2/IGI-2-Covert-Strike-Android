@@ -23,6 +23,9 @@ public sealed partial class Igi2TitlePlayer : ITitlePlayerOptics
     public bool IsBinocularsOpen => !IsCutscenePlaying && !Human.IsDead && ZoomOverlay == BinocularOverlayType;
 
     /// <inheritdoc/>
+    public bool IsInfrared => Human.IsInfraEnabled;
+
+    /// <inheritdoc/>
     /// <remarks>The bearing of the view's forward across the ground, as the retail compass reads it (<c>BinocularOverlay_DrawCompass</c>).</remarks>
     public float BinocularHeadingRadians
     {
