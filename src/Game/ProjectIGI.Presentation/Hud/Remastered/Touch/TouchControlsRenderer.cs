@@ -362,9 +362,11 @@ public static class TouchControlsRenderer
                 Line(-0.7f, 0.85f, 0.7f, 0.85f);
                 break;
             case TouchButton.PrevWeapon:
-                // One left arrow: the previous weapon, the mirror of the weapon button's upper arrow.
-                Line(-0.5f, 0f, 0.55f, 0f);
-                painter.FillTriangle(P(-0.95f, 0f), P(-0.5f, -0.36f), P(-0.5f, 0.36f), ink);
+                // Previous track: a bar and one left arrow — the "go back one" mark, not the
+                // weapon button's two-way swap arrows beside it.
+                painter.FillRect(new UiRect(c.X - (size * 0.95f), c.Y - (size * 0.36f), size * 0.18f, size * 0.72f), ink);
+                Line(-0.28f, 0f, 0.55f, 0f);
+                painter.FillTriangle(P(-0.72f, 0f), P(-0.28f, -0.36f), P(-0.28f, 0.36f), ink);
                 break;
             case TouchButton.WeaponWheel:
                 // A wheel: ring, three spokes, hub — hold it and steer to pick a weapon.

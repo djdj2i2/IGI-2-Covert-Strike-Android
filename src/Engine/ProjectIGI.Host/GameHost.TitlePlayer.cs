@@ -285,6 +285,17 @@ public sealed partial class GameHost
     {
         if (Gameplay is not { } gameplay) { return; }
         foreach (PlayerProfile profile in _configuration.Profiles) { TitleInputBindings.RestoreMissing(profile, gameplay.InputBindings); }
+
+        // What each title control resolved to on this device, so a button that does nothing can be
+        // told apart from a button that was never bound: an UNBOUND row here means the saved profile
+        // predates the control, and the repair above should already have fixed it.
+        foreach (TitleInputBinding binding in gameplay.InputBindings)
+        {
+            string control = PlayerProfileInputBindings.TryBoundControl(_configuration.Active, binding.Default.Action, out var key, out var button)
+                ? (button is { } mouse ? mouse.ToString() : key.ToString())
+                : "UNBOUND";
+            _logger.Information("Input", $"Title control {binding.Default.Action} is on {control}.");
+        }
     }
 
     /// <summary>Applies pending mouse motion to this rendered frame while gameplay remains on its tick.</summary>
