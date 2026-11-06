@@ -858,9 +858,22 @@ public sealed class TouchControls
             _layout.Add(new TouchButtonSpot(TouchButton.Thermal, ResolvePos(TouchElementId.Thermal, new UiVec2(safe.Right - Px(470f), safe.Bottom - Px(540f))), Px(SmallRadius) * Scale(TouchElementId.Thermal), ElementId: TouchElementId.Thermal));
         }
 
-        // Computer close
+        // While the computer is open, only its own controls show: the navigation
+        // stick and zoom at the top centre, with Pause and the Map button at the
+        // top-right corner. Every other button is hidden, because the layout in
+        // Computer mode is this list alone. Map is the computer's own toggle, so
+        // it closes the computer; Pause opens the pause menu. Other titles keep
+        // their Close button, which does the same job as Map.
         _computerLayout.Clear();
-        _computerLayout.Add(new TouchButtonSpot(TouchButton.Close, new UiVec2(safe.Right - Px(90f), safe.Y + Px(90f)), Px(ButtonRadius)));
+        if (ShowIgi2Buttons)
+        {
+            _computerLayout.Add(new TouchButtonSpot(TouchButton.Pause, new UiVec2(safe.Right - Px(80f), safe.Y + Px(80f)), Px(CornerRadius), ElementId: TouchElementId.Pause));
+            _computerLayout.Add(new TouchButtonSpot(TouchButton.Map, new UiVec2(safe.Right - Px(80f) - Px(CornerRadius * 2.6f), safe.Y + Px(80f)), Px(CornerRadius), ElementId: TouchElementId.Map));
+        }
+        else
+        {
+            _computerLayout.Add(new TouchButtonSpot(TouchButton.Close, new UiVec2(safe.Right - Px(90f), safe.Y + Px(90f)), Px(ButtonRadius)));
+        }
 
         // The map computer's own controls, at the very top centre, only while it is open:
         // zoom out and in flanking a fixed navigation stick, which pans the map. The stick is
