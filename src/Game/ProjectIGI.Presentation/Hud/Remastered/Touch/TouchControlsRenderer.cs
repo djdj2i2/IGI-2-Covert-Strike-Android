@@ -138,6 +138,15 @@ public static class TouchControlsRenderer
                 TouchElementId.Reload => "RELOAD",
                 TouchElementId.Jump => "JUMP",
                 TouchElementId.Crouch => "CROUCH",
+                TouchElementId.StanceDown => "STANCE -",
+                TouchElementId.StanceUp => "STANCE +",
+                TouchElementId.WalkRun => "WALK/RUN",
+                TouchElementId.Prone => "PRONE",
+                TouchElementId.PrevWeapon => "PREV WEAPON",
+                TouchElementId.WeaponWheel => "WEAPON WHEEL",
+                TouchElementId.DropWeapon => "DROP WEAPON",
+                TouchElementId.Thermal => "THERMAL",
+                TouchElementId.WalkHold => "WALK (HOLD)",
                 TouchElementId.Peek => "PEEK",
                 TouchElementId.ZoomIn => "ZOOM +",
                 TouchElementId.ZoomOut => "ZOOM -",
@@ -326,6 +335,59 @@ public static class TouchControlsRenderer
             case TouchButton.LowerStance:
                 painter.DrawChevron(P(0f, 0.1f), size * 0.6f, UiDirection.Down, stroke, ink);
                 Line(-0.6f, -0.55f, 0.6f, -0.55f);
+                break;
+            case TouchButton.WalkRun:
+                // A runner mid-stride: head, torso leaning forward, legs split wide, one arm swinging.
+                Dot(0.32f, -0.72f, 0.2f);
+                Line(0.22f, -0.48f, -0.08f, 0.02f);
+                Line(-0.08f, 0.02f, 0.42f, 0.72f);
+                Line(-0.08f, 0.02f, -0.58f, 0.42f);
+                Line(0.16f, -0.36f, 0.58f, -0.02f);
+                break;
+            case TouchButton.Prone:
+                // Lying flat: head at one end, body and legs in one level line, ground below.
+                Dot(-0.68f, -0.18f, 0.2f);
+                Line(-0.48f, -0.08f, 0.72f, -0.08f);
+                Line(0.12f, -0.08f, 0.28f, 0.38f);
+                Line(-0.85f, 0.55f, 0.85f, 0.55f);
+                break;
+            case TouchButton.WalkHold:
+                // A walker, upright and unhurried: head, vertical torso, legs in a walk stride, ground below.
+                Dot(0.05f, -0.72f, 0.2f);
+                Line(0f, -0.48f, 0f, 0.12f);
+                Line(0f, 0.12f, 0.38f, 0.72f);
+                Line(0f, 0.12f, -0.38f, 0.72f);
+                Line(0f, -0.32f, 0.34f, 0.02f);
+                Line(0f, -0.32f, -0.34f, 0.02f);
+                Line(-0.7f, 0.85f, 0.7f, 0.85f);
+                break;
+            case TouchButton.PrevWeapon:
+                // One left arrow: the previous weapon, the mirror of the weapon button's upper arrow.
+                Line(-0.5f, 0f, 0.55f, 0f);
+                painter.FillTriangle(P(-0.95f, 0f), P(-0.5f, -0.36f), P(-0.5f, 0.36f), ink);
+                break;
+            case TouchButton.WeaponWheel:
+                // A wheel: ring, three spokes, hub — hold it and steer to pick a weapon.
+                Ring(0f, 0f, 0.72f);
+                Line(0f, -0.18f, 0f, -0.72f);
+                Line(-0.16f, 0.1f, -0.62f, 0.38f);
+                Line(0.16f, 0.1f, 0.62f, 0.38f);
+                Dot(0f, 0f, 0.12f);
+                break;
+            case TouchButton.DropWeapon:
+                // A weapon dropping to the ground: diagonal barrel with a grip tick, down chevron, ground line.
+                Line(-0.55f, -0.68f, 0.3f, -0.3f);
+                Line(-0.08f, -0.47f, -0.24f, -0.18f);
+                painter.DrawChevron(P(0f, 0.14f), size * 0.45f, UiDirection.Down, stroke, ink);
+                Line(-0.7f, 0.6f, 0.7f, 0.6f);
+                break;
+            case TouchButton.Thermal:
+                // A sight ring with heat rising inside it: a zigzag, like the shimmer over hot ground.
+                Ring(0f, 0f, 0.72f);
+                Line(-0.42f, 0.2f, -0.21f, -0.25f);
+                Line(-0.21f, -0.25f, 0f, 0.2f);
+                Line(0f, 0.2f, 0.21f, -0.25f);
+                Line(0.21f, -0.25f, 0.42f, 0.2f);
                 break;
             case TouchButton.Crouch:
                 Dot(0.15f, -0.72f, 0.2f);
