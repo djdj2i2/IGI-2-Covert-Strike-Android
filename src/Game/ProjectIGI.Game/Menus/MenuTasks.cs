@@ -501,6 +501,16 @@ public partial class ScrollListBoxTask : MenuWindowTask
     [ScriptParam(ScriptParamType.VarString, "On Select Item")]
     public string OnSelectItem { get; set; } = string.Empty;
 
+    /// <summary>Gets or sets the expression run after the selection changes.</summary>
+    /// <remarks>
+    /// The retail script's eighth value, after On Select Item: screen 914's mission list passes
+    /// <c>MenuStatsScreen_SetActiveMissionID(this.nActiveID)</c> here, which is what tells the stats
+    /// screen the selection moved. Without this parameter the value was dropped at spawn and the
+    /// stats box kept showing the mission the screen opened on.
+    /// </remarks>
+    [ScriptParam(ScriptParamType.VarString, "Modify Data Script")]
+    public string ModifyDataScript { get; set; } = string.Empty;
+
     /// <summary>Gets or sets the selected entry's id, exported to script as <c>nActiveID</c>.</summary>
     public int ActiveId { get; set; }
 

@@ -36,6 +36,11 @@ public sealed partial class GameHost
     // The map computer's navigation stick, held per direction like the movement stick's:
     // each direction lets go only back inside the smaller release zone.
     private (bool Up, bool Down, bool Left, bool Right) _computerStickHeld;
+    // A held arrow pans a whole step a tick, far too fast to steer by, so the navigation
+    // stick only holds the arrows one tick in this many: a third of the keyboard's rate.
+    // Control stays held the whole time the stick is off centre.
+    private const int ComputerStickStepTicks = 3;
+    private int _computerStickPulse;
 
     /// <summary>The action the crouch button holds: the running title's own crouch where it replaces the shared one (I.G.I. 2), else the shared action. The shared crouch bit is stripped for a replacing title, so sending the shared name would silently do nothing — the old button only worked because the title's alternate row happened to share the same key.</summary>
     private string CrouchAction()
@@ -137,6 +142,7 @@ public sealed partial class GameHost
             _computerZoomInHeldPrev = false;
             _computerZoomOutHeldPrev = false;
             _computerStickHeld = default;
+            _computerStickPulse = 0;
         }
 
         // No early return for Customizing: the Play/Computer blocks below are mode-gated, so
@@ -203,6 +209,11 @@ public sealed partial class GameHost
             // the map only pans on an arrow while Control is down, so the stick holds both.
             // The keys are the computer's fixed ones, not a bound action, and the release
             // section below lets them go when the stick comes back to centre.
+            // The arrows are only held one tick in three while the stick is off centre: a
+            // held arrow pans a whole step a tick, which drifts far too fast to steer by,
+            // while Control stays held the whole time (lifting it would hand the arrows
+            // back to the menu). The dead and release zones are untouched, the first tick
+            // off centre pans at once, and letting go still stops the map at once.
             UiVec2 computerStick = _touchControls.Stick;
             static bool HoldComputerDirection(bool held, float along) =>
                 along > (held ? TouchControls.StickReleaseZone : TouchControls.StickDeadZone);
@@ -211,27 +222,30 @@ public sealed partial class GameHost
                 HoldComputerDirection(_computerStickHeld.Down, computerStick.Y),
                 HoldComputerDirection(_computerStickHeld.Left, -computerStick.X),
                 HoldComputerDirection(_computerStickHeld.Right, computerStick.X));
-            if (_computerStickHeld.Up || _computerStickHeld.Down || _computerStickHeld.Left || _computerStickHeld.Right)
+            bool computerPanning = _computerStickHeld.Up || _computerStickHeld.Down || _computerStickHeld.Left || _computerStickHeld.Right;
+            _computerStickPulse = computerPanning ? _computerStickPulse + 1 : 0;
+            bool computerStep = computerPanning && _computerStickPulse % ComputerStickStepTicks == 1;
+            if (computerPanning)
             {
                 _touchKeysWanted.Add(KeyCode.LeftControl);
             }
 
-            if (_computerStickHeld.Up)
+            if (computerStep && _computerStickHeld.Up)
             {
                 _touchKeysWanted.Add(KeyCode.Up);
             }
 
-            if (_computerStickHeld.Down)
+            if (computerStep && _computerStickHeld.Down)
             {
                 _touchKeysWanted.Add(KeyCode.Down);
             }
 
-            if (_computerStickHeld.Left)
+            if (computerStep && _computerStickHeld.Left)
             {
                 _touchKeysWanted.Add(KeyCode.Left);
             }
 
-            if (_computerStickHeld.Right)
+            if (computerStep && _computerStickHeld.Right)
             {
                 _touchKeysWanted.Add(KeyCode.Right);
             }

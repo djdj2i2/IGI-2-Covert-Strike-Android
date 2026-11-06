@@ -231,8 +231,10 @@ public partial class ScrollListBoxTask
         _clickedRow = Index;
         KeepSelectionVisible();
 
-        // Nothing else has to be told: the controls keyed off this list re-evaluate their own
-        // expression every update, which is why the original can move a row and reload nothing.
+        // The selection moved, so the modify script runs: screen 914's mission list passes
+        // MenuStatsScreen_SetActiveMissionID(this.nActiveID) there, which is what tells the
+        // stats screen to show this mission's name and description.
+        Run(ModifyDataScript);
         Manager?.PlaySound(MenuManagerTask.MoveSoundName);
     }
 
