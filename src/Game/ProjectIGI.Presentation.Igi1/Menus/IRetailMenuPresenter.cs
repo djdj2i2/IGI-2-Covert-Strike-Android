@@ -4,6 +4,7 @@ using ProjectIGI.Engine.Vfs;
 using ProjectIGI.Game.Menus;
 using ProjectIGI.Game.World;
 using ProjectIGI.Input;
+using ProjectIGI.Presentation.Rendering;
 using ProjectIGI.Rendering;
 
 namespace ProjectIGI.Presentation.Igi1.Menus;
@@ -35,6 +36,7 @@ public interface IRetailMenuPresenter : IMenuHost, IDisposable
 /// <param name="Leave">What leaving the menus does, given how the manager left them.</param>
 /// <param name="Logger">Where diagnostics go.</param>
 /// <param name="Style">Whose menu this is: its colour table, and which shared chrome it keeps.</param>
+/// <param name="MissionSelectBackground">The mission-select screen's own background, or <see langword="null"/> for the script's. Borrowed: the presenter that loaded it disposes it.</param>
 public readonly record struct RetailMenuPresentationRequest(
     IGraphicsDevice Device,
     VirtualFileSystem FileSystem,
@@ -49,4 +51,5 @@ public readonly record struct RetailMenuPresentationRequest(
     SoundSystem? Sounds,
     Action<MenuManagerState> Leave,
     IProjectIGILogger Logger,
-    MenuStyle Style);
+    MenuStyle Style,
+    SpriteResource? MissionSelectBackground = null);

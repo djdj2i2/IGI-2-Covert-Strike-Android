@@ -60,6 +60,7 @@ public sealed class RetailMenuHost : IRetailMenuPresenter
         {
             Scale = request.Scale,
             Style = request.Style,
+            MissionSelectBackground = request.MissionSelectBackground,
         };
     }
 
