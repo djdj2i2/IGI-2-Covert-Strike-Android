@@ -473,7 +473,10 @@ public sealed partial class GameHost : IDisposable
     // under the several seconds the bake itself takes, so the two do not read as one long event.
     private const float ProbeFadeMilliseconds = 600f;
 
-    private const int ShowcaseMissionId = 1;
+    // The menu's showcase backdrop is the title's first campaign mission, not a hardcoded id:
+    // IGI 1's first campaign mission is 1, but IGI 2's is 11 — ids 1, 5 and 100 are
+    // multiplayer maps, and asking for one builds a backdrop with no terrain.
+    private int ShowcaseMissionId => _missions.InProgressionOrder().FirstOrDefault()?.Id ?? 1;
 
     // How long a mission has to stay selected before its level is built. Every selection re-arms the
     // timer, so running down the list faster than this builds nothing at all. It can be short now that
