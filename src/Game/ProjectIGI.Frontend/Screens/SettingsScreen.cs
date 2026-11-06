@@ -17,12 +17,17 @@ namespace ProjectIGI.Frontend.Screens;
 /// 2. Controls alpha slider
 /// 3. Max frame rate (FPS cap: 30, 60, 90, 120, Uncapped)
 /// 4. Invert mouse/look pitch toggle
+/// 5. Graphics: resolution, frame rate, sun, smooth motion, FPS counter, texture sharpness,
+///    mip blending, muzzle flash, impact effects and particles, weather and storm — every
+///    graphics option that actually changes the picture on the Android (vanilla) path.
 /// </summary>
 public sealed class SettingsScreen : ShellScreen
 {
     private static readonly int[] FpsCapValues = [30, 60, 90, 120, 0];
     private static readonly string[] FpsCapLabels = ["30 FPS", "60 FPS", "90 FPS", "120 FPS", "UNCAPPED"];
     private static readonly string[] RenderScaleLabels = ["540P (ULTRA)", "720P (PERFORMANCE)", "900P (BALANCED)", "NATIVE (MAX)"];
+    private static readonly int[] AnisotropyValues = [1, 4, 8, 16];
+    private static readonly string[] AnisotropyLabels = ["OFF", "4X", "8X", "16X"];
 
     private readonly float _initialOpacity;
     private readonly float _initialSensitivity;
@@ -34,8 +39,15 @@ public sealed class SettingsScreen : ShellScreen
     private readonly float _initialTextScale;
     private readonly int _initialRenderScale;
     private readonly bool _initialShowFps;
-    private readonly float _initialGamma;
     private readonly float _initialSunBrightness;
+    private readonly bool _initialSmooth;
+    private readonly int _initialAnisotropy;
+    private readonly bool _initialPointMips;
+    private readonly float _initialMuzzleFlash;
+    private readonly bool _initialImpactEffects;
+    private readonly float _initialImpactParticles;
+    private readonly bool _initialWeather;
+    private readonly bool _initialStorm;
     private readonly float _initialCrosshairScale;
     private readonly int _initialCrosshairColor;
     private readonly bool _initialCrosshairOutline;
@@ -61,8 +73,15 @@ public sealed class SettingsScreen : ShellScreen
         _initialTextScale = LayoutContext.GlobalTextScale;
         _initialRenderScale = context.Host.RenderScaleMode;
         _initialShowFps = DisplayCVars.ShowFps.Value;
-        _initialGamma = PostCVars.Gamma.Value;
         _initialSunBrightness = LightingCVars.SunBrightness.Value;
+        _initialSmooth = FrameCVars.SmoothPresentation.Value;
+        _initialAnisotropy = MaterialCVars.Anisotropy.Value;
+        _initialPointMips = MaterialCVars.PointMips.Value;
+        _initialMuzzleFlash = CombatEffectCVars.MuzzleFlash.Value;
+        _initialImpactEffects = CombatEffectCVars.ImpactEffects.Value;
+        _initialImpactParticles = CombatEffectCVars.ImpactParticles.Value;
+        _initialWeather = WeatherCVars.WeatherEnabled.Value;
+        _initialStorm = WeatherCVars.Storm.Value;
         _initialCrosshairScale = HudCVars.CrosshairScale.Value;
         _initialCrosshairColor = HudCVars.CrosshairColor.Value;
         _initialCrosshairOutline = HudCVars.CrosshairOutline.Value;
@@ -195,6 +214,14 @@ public sealed class SettingsScreen : ShellScreen
         };
         configStack.AddChild(textSizeSlider);
 
+        // ── Graphics ───────────────────────────────────────────────────────
+        // One category for every graphics option that actually changes the picture on
+        // the Android path (first-run preset Vanilla: the original's forward path
+        // straight to the back buffer, no offscreen scene, no Resolve pass). Rows
+        // that only run on the deferred/HDR path are deliberately not here — see the
+        // PR body for the list and why.
+        configStack.AddChild(new GroupHeader(theme, "Graphics") { Margin = new Thickness(0f, 18f, 0f, 4f) });
+
         // ── Option 5: Max Frame Rate (FPS Cap) ───────────────────────────
         int currentFps = ReconstructionCVars.FrameLimit.Value;
         int selectedFpsIndex = Array.IndexOf(FpsCapValues, currentFps);
@@ -230,26 +257,11 @@ public sealed class SettingsScreen : ShellScreen
         };
         configStack.AddChild(resCycler);
 
-        // ── Gamma: how bright the picture reads ─────────────────────────────
-        // A display-space power curve applied after the tone map. Above 1 the sun-lit
-        // models and mid-tones read brighter; below 1 they read darker. 1 is no change.
-        float initialGamma = PostCVars.Gamma.Value;
-        var gammaSlider = new Slider(theme, "Gamma", 50f, 250f, (int)Math.Round(initialGamma * 100f), 5f)
-        {
-            Width = 980f,
-            Height = 56f,
-        };
-        gammaSlider.ValueChanged += value =>
-        {
-            PostCVars.Gamma.Value = Math.Clamp(value / 100f, 0.5f, 2.5f);
-        };
-        configStack.AddChild(gammaSlider);
-
         // ── Sun: how bright the level sun reads ─────────────────────────────
         // Scales the authored sun that lights the models and the world's bakes.
         // Above 100% dark areas read brighter; 100% is the level as authored.
-        // (The Gamma slider above is display gamma and never runs on the vanilla
-        // path Android uses, so this is the brightness knob that works there.)
+        // (Display gamma only runs in the Resolve pass, which the vanilla path
+        // Android uses never has, so this is the brightness knob that works here.)
         float initialSun = LightingCVars.SunBrightness.Value;
         var sunSlider = new Slider(theme, "Sun", 50f, 300f, (int)Math.Round(initialSun * 100f), 5f)
         {
@@ -261,6 +273,148 @@ public sealed class SettingsScreen : ShellScreen
             LightingCVars.SunBrightness.Value = Math.Clamp(value / 100f, 0.5f, 3f);
         };
         configStack.AddChild(sunSlider);
+
+        // ── Smooth Motion: draw at the display's rate, not the original's 30 Hz ──
+        // Interpolates between the original's fixed 30 ticks a second. Off restores
+        // the original cadence (and IGI 2's retail mouse filtering and turn-speed cap).
+        bool smoothState = FrameCVars.SmoothPresentation.Value;
+        var smoothToggle = new Toggle(theme, "Smooth Motion", smoothState)
+        {
+            Width = 980f,
+            Height = 56f,
+            Tooltip = "Draw the world at your display's rate instead of the original's fixed 30 steps a second. Off restores the original cadence.",
+        };
+        smoothToggle.ValueChanged += val =>
+        {
+            FrameCVars.SmoothPresentation.Value = val;
+        };
+        configStack.AddChild(smoothToggle);
+
+        // ── Show FPS Counter Overlay (moved up from the end of the list) ───────
+        bool showFpsState = DisplayCVars.ShowFps.Value;
+        var fpsToggle = new Toggle(theme, "Show FPS Counter", showFpsState)
+        {
+            Width = 980f,
+            Height = 56f,
+        };
+        fpsToggle.ValueChanged += val =>
+        {
+            DisplayCVars.ShowFps.Value = val;
+        };
+        configStack.AddChild(fpsToggle);
+
+        // ── Graphics quality ───────────────────────────────────────────────
+        // Texture sharpness is the knob for Ray's "snow looks too smooth": vanilla
+        // pins anisotropy to 1 (off), and without it the ground smears towards the
+        // horizon. The rest are the combat/weather picture knobs that are live on
+        // this path. Both texture rows apply to textures loaded after the
+        // change, so they take effect on the next level.
+        configStack.AddChild(new GroupHeader(theme, "Graphics quality") { Margin = new Thickness(0f, 18f, 0f, 4f) });
+
+        // ── Texture Sharpness: anisotropic filtering (Off / 4x / 8x / 16x) ─────
+        int currentAnisotropy = MaterialCVars.Anisotropy.Value;
+        int selectedAnisotropyIndex = Array.IndexOf(AnisotropyValues, currentAnisotropy);
+        if (selectedAnisotropyIndex < 0)
+        {
+            selectedAnisotropyIndex = 0;
+        }
+
+        var anisotropyCycler = new OptionCycler(theme, "Texture Sharpness", AnisotropyLabels, selectedAnisotropyIndex)
+        {
+            Width = 980f,
+            Height = 56f,
+            ContentWidth = 320f,
+            Tooltip = "How sharp the ground stays into the distance. Off is the original's look; higher keeps snow and terrain crisp towards the horizon. Takes effect on the next level.",
+        };
+        anisotropyCycler.SelectionChanged += index =>
+        {
+            MaterialCVars.Anisotropy.Value = AnisotropyValues[index];
+        };
+        configStack.AddChild(anisotropyCycler);
+
+        // ── Blend Mip Levels: linear mip blending instead of the original's nearest ──
+        bool mipBlendState = !MaterialCVars.PointMips.Value;
+        var mipBlendToggle = new Toggle(theme, "Blend Mip Levels", mipBlendState)
+        {
+            Width = 980f,
+            Height = 56f,
+            Tooltip = "Blend between mip levels instead of taking the nearest one, as the original does. Off is the original's slightly crisper, slightly shimmering look. Takes effect on the next level.",
+        };
+        mipBlendToggle.ValueChanged += val =>
+        {
+            MaterialCVars.PointMips.Value = !val;
+        };
+        configStack.AddChild(mipBlendToggle);
+
+        // ── Muzzle Flash: how bright the flame at the barrel is ───────────────
+        float initialMuzzleFlash = CombatEffectCVars.MuzzleFlash.Value;
+        var muzzleSlider = new Slider(theme, "Muzzle Flash", 0f, 100f, (int)Math.Round(initialMuzzleFlash * 100f), 5f)
+        {
+            Width = 980f,
+            Height = 56f,
+            Tooltip = "How bright the flame at the barrel is. 100% is the original's; 0 removes it.",
+        };
+        muzzleSlider.ValueChanged += value =>
+        {
+            CombatEffectCVars.MuzzleFlash.Value = Math.Clamp(value / 100f, 0f, 1f);
+        };
+        configStack.AddChild(muzzleSlider);
+
+        // ── Impact Effects: the original's own dust, chips and blood ──────────
+        bool impactEffectsState = CombatEffectCVars.ImpactEffects.Value;
+        var impactEffectsToggle = new Toggle(theme, "Impact Effects", impactEffectsState)
+        {
+            Width = 980f,
+            Height = 56f,
+            Tooltip = "The original's own impact dust, surface chips and blood where rounds land.",
+        };
+        impactEffectsToggle.ValueChanged += val =>
+        {
+            CombatEffectCVars.ImpactEffects.Value = val;
+        };
+        configStack.AddChild(impactEffectsToggle);
+
+        // ── Impact Particles: the remaster's extra burst where a round lands ───
+        float initialImpactParticles = CombatEffectCVars.ImpactParticles.Value;
+        var impactParticlesSlider = new Slider(theme, "Impact Particles", 0f, 200f, (int)Math.Round(initialImpactParticles * 100f), 10f)
+        {
+            Width = 980f,
+            Height = 56f,
+            Tooltip = "Extra sparks, dust and debris where rounds land, chosen to suit the surface hit. 0 is the original's effects only; 100% is the authored burst.",
+        };
+        impactParticlesSlider.ValueChanged += value =>
+        {
+            CombatEffectCVars.ImpactParticles.Value = Math.Clamp(value / 100f, 0f, 2f);
+        };
+        configStack.AddChild(impactParticlesSlider);
+
+        // ── Weather: the rain or snow the level authors gave the mission ──────
+        bool weatherState = WeatherCVars.WeatherEnabled.Value;
+        var weatherToggle = new Toggle(theme, "Weather", weatherState)
+        {
+            Width = 980f,
+            Height = 56f,
+            Tooltip = "Draw the rain or snow the level authors gave each mission.",
+        };
+        weatherToggle.ValueChanged += val =>
+        {
+            WeatherCVars.WeatherEnabled.Value = val;
+        };
+        configStack.AddChild(weatherToggle);
+
+        // ── Storm Effects: the remastered particle storm instead of the original's rain band ──
+        bool stormState = WeatherCVars.Storm.Value;
+        var stormToggle = new Toggle(theme, "Storm Effects", stormState)
+        {
+            Width = 980f,
+            Height = 56f,
+            Tooltip = "Wind-blown storm rain with splashes and lightning, instead of the original's fixed rain band. Only where a level rains.",
+        };
+        stormToggle.ValueChanged += val =>
+        {
+            WeatherCVars.Storm.Value = val;
+        };
+        configStack.AddChild(stormToggle);
 
         // ── Crosshair: size, colour and outline ────────────────────────────
         // The sight is a hairline at 1px on a dense display; these make it readable.
@@ -358,18 +512,6 @@ public sealed class SettingsScreen : ShellScreen
         };
         configStack.AddChild(gyroSensSlider);
 
-        // ── Option 8: Show FPS Counter Overlay ───────────────────────────
-        bool showFpsState = DisplayCVars.ShowFps.Value;
-        var fpsToggle = new Toggle(theme, "Show FPS Counter", showFpsState)
-        {
-            Width = 980f,
-            Height = 56f,
-        };
-        fpsToggle.ValueChanged += val =>
-        {
-            DisplayCVars.ShowFps.Value = val;
-        };
-        configStack.AddChild(fpsToggle);
 
         frame.AddChild(_scroll);
 
@@ -416,8 +558,15 @@ public sealed class SettingsScreen : ShellScreen
             LayoutContext.GlobalUiScale = _initialUiScale;
             LayoutContext.GlobalTextScale = _initialTextScale;
             DisplayCVars.ShowFps.Value = _initialShowFps;
-            PostCVars.Gamma.Value = _initialGamma;
             LightingCVars.SunBrightness.Value = _initialSunBrightness;
+            FrameCVars.SmoothPresentation.Value = _initialSmooth;
+            MaterialCVars.Anisotropy.Value = _initialAnisotropy;
+            MaterialCVars.PointMips.Value = _initialPointMips;
+            CombatEffectCVars.MuzzleFlash.Value = _initialMuzzleFlash;
+            CombatEffectCVars.ImpactEffects.Value = _initialImpactEffects;
+            CombatEffectCVars.ImpactParticles.Value = _initialImpactParticles;
+            WeatherCVars.WeatherEnabled.Value = _initialWeather;
+            WeatherCVars.Storm.Value = _initialStorm;
             HudCVars.CrosshairScale.Value = _initialCrosshairScale;
             HudCVars.CrosshairColor.Value = _initialCrosshairColor;
             HudCVars.CrosshairOutline.Value = _initialCrosshairOutline;
@@ -509,3 +658,4 @@ public sealed class SettingsScreen : ShellScreen
         return base.HandleInput(nav, input);
     }
 }
+
