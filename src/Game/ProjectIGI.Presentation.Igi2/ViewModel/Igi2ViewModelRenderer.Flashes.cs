@@ -131,11 +131,15 @@ public sealed partial class Igi2ViewModelRenderer
             side = 1f - front;
         }
 
+        // The player's own muzzle-flash strength (r_muzzle_flash): the flash's own fade is untouched,
+        // this only scales how bright it draws. At 0 the quads still draw, at alpha 0.
+        float intensity = flash.Intensity * CombatEffectCVars.MuzzleFlash.Value;
+
         const float metres = (float)(1.0 / WorldScene.UnitsPerMetre);
         if (front > 0f)
         {
             float r = flash.Size * (firstPerson ? FirstPersonFrontSpan : FlashSpan) * metres;
-            Bgra32 colour = White(front * flash.Intensity);
+            Bgra32 colour = White(front * intensity);
             _flashVertices[0] = new(new(-r, 0f, -r), default, 0f, 0f, colour: colour);
             _flashVertices[1] = new(new(r, 0f, -r), default, 1f, 0f, colour: colour);
             _flashVertices[2] = new(new(-r, 0f, r), default, 0f, 1f, colour: colour);
@@ -156,7 +160,7 @@ public sealed partial class Igi2ViewModelRenderer
 
             float w = flash.Size * FlashSpan * metres;
             float back = flash.Size * SideBehind * metres, ahead = flash.Size * SideAhead * metres;
-            Bgra32 colour = White(side * flash.Intensity);
+            Bgra32 colour = White(side * intensity);
             _flashVertices[0] = new(new(-x * w, back, -z * w), default, 0f, 0f, colour: colour);
             _flashVertices[1] = new(new(-x * w, ahead, -z * w), default, 1f, 0f, colour: colour);
             _flashVertices[2] = new(new(x * w, back, z * w), default, 0f, 1f, colour: colour);

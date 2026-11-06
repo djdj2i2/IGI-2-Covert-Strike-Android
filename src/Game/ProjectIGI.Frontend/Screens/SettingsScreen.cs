@@ -17,9 +17,10 @@ namespace ProjectIGI.Frontend.Screens;
 /// 2. Controls alpha slider
 /// 3. Max frame rate (FPS cap: 30, 60, 90, 120, Uncapped)
 /// 4. Invert mouse/look pitch toggle
-/// 5. Graphics: resolution, frame rate, sun, smooth motion, FPS counter, texture sharpness,
-///    mip blending, muzzle flash, impact effects and particles, weather and storm — every
-///    graphics option that actually changes the picture on the Android (vanilla) path.
+/// 5. Graphics: resolution, frame rate, sun, smooth motion, FPS counter, texture sharpness and
+///    quality, mip blending, muzzle flash, weather and storm — every graphics option that actually
+///    changes the picture on the Android (vanilla) path. Impact effects and particles are not here:
+///    both are I.G.I. 1-only systems with no I.G.I. 2 input, so on this title they changed nothing.
 /// </summary>
 public sealed class SettingsScreen : ShellScreen
 {
@@ -28,6 +29,7 @@ public sealed class SettingsScreen : ShellScreen
     private static readonly string[] RenderScaleLabels = ["540P (ULTRA)", "720P (PERFORMANCE)", "900P (BALANCED)", "NATIVE (MAX)"];
     private static readonly int[] AnisotropyValues = [1, 4, 8, 16];
     private static readonly string[] AnisotropyLabels = ["OFF", "4X", "8X", "16X"];
+    private static readonly string[] TextureQualityLabels = ["LOW", "MEDIUM", "HIGH"];
 
     private readonly float _initialOpacity;
     private readonly float _initialSensitivity;
@@ -43,9 +45,8 @@ public sealed class SettingsScreen : ShellScreen
     private readonly bool _initialSmooth;
     private readonly int _initialAnisotropy;
     private readonly bool _initialPointMips;
+    private readonly int _initialTextureQuality;
     private readonly float _initialMuzzleFlash;
-    private readonly bool _initialImpactEffects;
-    private readonly float _initialImpactParticles;
     private readonly bool _initialWeather;
     private readonly bool _initialStorm;
     private readonly float _initialCrosshairScale;
@@ -69,22 +70,62 @@ public sealed class SettingsScreen : ShellScreen
         _initialInvert = context.Config.Active?.InvertMouse ?? false;
         _initialGyro = context.Config.Active?.GyroEnabled ?? false;
         _initialGyroSensitivity = context.Config.Active?.GyroSensitivity ?? 0.5f;
-        _initialUiScale = LayoutContext.GlobalUiScale;
-        _initialTextScale = LayoutContext.GlobalTextScale;
+        _initialUiScale = DisplayCVars.UiScale.Value;
+        _initialTextScale = DisplayCVars.TextScale.Value;
         _initialRenderScale = context.Host.RenderScaleMode;
         _initialShowFps = DisplayCVars.ShowFps.Value;
         _initialSunBrightness = LightingCVars.SunBrightness.Value;
         _initialSmooth = FrameCVars.SmoothPresentation.Value;
         _initialAnisotropy = MaterialCVars.Anisotropy.Value;
         _initialPointMips = MaterialCVars.PointMips.Value;
+        _initialTextureQuality = MaterialCVars.TextureQuality.Value;
         _initialMuzzleFlash = CombatEffectCVars.MuzzleFlash.Value;
-        _initialImpactEffects = CombatEffectCVars.ImpactEffects.Value;
-        _initialImpactParticles = CombatEffectCVars.ImpactParticles.Value;
         _initialWeather = WeatherCVars.WeatherEnabled.Value;
         _initialStorm = WeatherCVars.Storm.Value;
         _initialCrosshairScale = HudCVars.CrosshairScale.Value;
         _initialCrosshairColor = HudCVars.CrosshairColor.Value;
         _initialCrosshairOutline = HudCVars.CrosshairOutline.Value;
+    }
+
+    /// <summary>Builds this screen's own theme: the shell's colours, with larger text and rows.</summary>
+    private static UiTheme LargeTheme(UiTheme shared)
+    {
+        return new UiTheme(shared.Body, shared.Heading, shared.Mono, shared.Display)
+        {
+            BodyTextSize = 22f,
+            HeadingTextSize = 52f,
+            LabelTextSize = 23f,
+            CaptionTextSize = 14f,
+            LabelTracking = shared.LabelTracking,
+            CaptionTracking = shared.CaptionTracking,
+            RowHeight = 56f,
+            RowDividers = shared.RowDividers,
+            GlassBlur = shared.GlassBlur,
+            Text = shared.Text,
+            TextBright = shared.TextBright,
+            TextLabel = shared.TextLabel,
+            TextSecondary = shared.TextSecondary,
+            TextMuted = shared.TextMuted,
+            TextDim = shared.TextDim,
+            TextDisabled = shared.TextDisabled,
+            Accent = shared.Accent,
+            AccentHover = shared.AccentHover,
+            OnAccent = shared.OnAccent,
+            Panel = shared.Panel,
+            FocusFill = shared.FocusFill,
+            Border = shared.Border,
+            Track = shared.Track,
+            Shadow = shared.Shadow,
+            Surface = shared.Surface,
+            SurfaceRaised = shared.SurfaceRaised,
+            Selection = shared.Selection,
+            Info = shared.Info,
+            Success = shared.Success,
+            Warning = shared.Warning,
+            Danger = shared.Danger,
+            Destructive = shared.Destructive,
+            DestructiveBorder = shared.DestructiveBorder,
+        };
     }
 
     /// <inheritdoc/>
@@ -99,7 +140,10 @@ public sealed class SettingsScreen : ShellScreen
     /// <inheritdoc/>
     protected override UiElement? BuildContent(LayoutContext context)
     {
-        UiTheme theme = Context.Theme;
+        // This screen's own theme: the shell's colours, with larger text and rows. The shared theme
+        // is never mutated -- the other screens are laid out for its sizes. The frame is already as
+        // tall as the 1080 reference allows, so the growth is in width, row height and text.
+        UiTheme theme = LargeTheme(Context.Theme);
 
         var root = new Canvas();
 
@@ -115,7 +159,7 @@ public sealed class SettingsScreen : ShellScreen
         // 2. Central Green Tactical Frame ("Configuration")
         var frame = new IgiTacticalFrame(theme, "Configuration")
         {
-            Width = 1100f,
+            Width = 1280f,
             Height = 880f,
             Margin = new Thickness(0f, 15f, 0f, 0f),
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -126,7 +170,7 @@ public sealed class SettingsScreen : ShellScreen
         // a ScrollView and the OK/Cancel bar stays fixed at the bottom of the frame.
         _scroll = new ScrollView(theme)
         {
-            Width = 1010f,
+            Width = 1190f,
             Height = 740f,
             Margin = new Thickness(60f, 42f, 30f, 0f),
             ScrollbarWidth = 14f,
@@ -136,8 +180,8 @@ public sealed class SettingsScreen : ShellScreen
         var configStack = new StackPanel
         {
             Orientation = Orientation.Vertical,
-            Spacing = 14f,
-            Width = 980f,
+            Spacing = 18f,
+            Width = 1150f,
         };
         _scroll.SetContent(configStack);
 
@@ -146,15 +190,15 @@ public sealed class SettingsScreen : ShellScreen
         {
             Orientation = Orientation.Horizontal,
             Gap = 16f,
-            Width = 980f,
+            Width = 1150f,
         };
 
         var customizeBtn = new Button(theme, "CUSTOMIZE ON-SCREEN CONTROLS")
         {
             Accent = ButtonAccent.Ghost,
-            Width = 980f,
-            Height = 66f,
-            TextSize = 24f,
+            Width = 1150f,
+            Height = 80f,
+            TextSize = 36f,
         };
         customizeBtn.Activated += _ => Context.Host.CustomizeTouchControls();
         customizeRow.Add(customizeBtn);
@@ -164,8 +208,8 @@ public sealed class SettingsScreen : ShellScreen
         int initialPct = (int)Math.Round(Context.Host.TouchOpacity * 100f);
         var alphaSlider = new Slider(theme, "Controls Alpha", 20f, 100f, initialPct, 5f)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
         };
         alphaSlider.ValueChanged += value =>
         {
@@ -178,8 +222,8 @@ public sealed class SettingsScreen : ShellScreen
         int initialSensPct = (int)Math.Round(Context.Host.TouchSensitivity * 100f);
         var sensSlider = new Slider(theme, "Touch Sensitivity", 20f, 300f, initialSensPct, 5f)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
         };
         sensSlider.ValueChanged += value =>
         {
@@ -189,28 +233,34 @@ public sealed class SettingsScreen : ShellScreen
         configStack.AddChild(sensSlider);
 
         // ── Option 4: UI Size Slider (80% to 200%) ─────────────────────────
-        int initialUiPct = (int)Math.Round(LayoutContext.GlobalUiScale * 100f);
+        // Backed by r_ui_scale, so the size survives a relaunch; the host hands the value to the
+        // layout as its user scale, which is what makes the whole shell -- this screen included --
+        // draw larger. The old version wrote a static nothing ever saved.
+        int initialUiPct = (int)Math.Round(DisplayCVars.UiScale.Value * 100f);
         var uiSizeSlider = new Slider(theme, "UI Size", 80f, 200f, initialUiPct, 5f)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
         };
         uiSizeSlider.ValueChanged += value =>
         {
-            LayoutContext.GlobalUiScale = Math.Clamp(value / 100f, 0.8f, 2.0f);
+            DisplayCVars.UiScale.Value = Math.Clamp(value / 100f, 0.8f, 2.0f);
         };
         configStack.AddChild(uiSizeSlider);
 
         // ── Option 4: Text Size Slider (80% to 150%) ───────────────────────
-        int initialTextPct = (int)Math.Round(LayoutContext.GlobalTextScale * 100f);
+        // Backed by r_text_scale, so it survives a relaunch too; the row widgets multiply the size
+        // they resolve by it as they draw, so it takes effect live. It used to write a static no
+        // text drawing ever read, so the slider did nothing at all.
+        int initialTextPct = (int)Math.Round(DisplayCVars.TextScale.Value * 100f);
         var textSizeSlider = new Slider(theme, "Text Size", 80f, 150f, initialTextPct, 5f)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
         };
         textSizeSlider.ValueChanged += value =>
         {
-            LayoutContext.GlobalTextScale = Math.Clamp(value / 100f, 0.8f, 1.5f);
+            DisplayCVars.TextScale.Value = Math.Clamp(value / 100f, 0.8f, 1.5f);
         };
         configStack.AddChild(textSizeSlider);
 
@@ -223,17 +273,30 @@ public sealed class SettingsScreen : ShellScreen
         configStack.AddChild(new GroupHeader(theme, "Graphics") { Margin = new Thickness(0f, 18f, 0f, 4f) });
 
         // ── Option 5: Max Frame Rate (FPS Cap) ───────────────────────────
+        // The default is 30: the CVar's own default and the first-run value, and the loop holds it
+        // strictly (see BeginFramePass). A value the cycler does not offer shows the nearest offered
+        // cap rather than claiming Uncapped; the stored value itself is left alone until a cap is
+        // picked.
         int currentFps = ReconstructionCVars.FrameLimit.Value;
         int selectedFpsIndex = Array.IndexOf(FpsCapValues, currentFps);
         if (selectedFpsIndex < 0)
         {
-            selectedFpsIndex = 4; // Uncapped default
+            int nearest = 0;
+            for (int i = 1; i < FpsCapValues.Length; i++)
+            {
+                if (Math.Abs(FpsCapValues[i] - currentFps) < Math.Abs(FpsCapValues[nearest] - currentFps))
+                {
+                    nearest = i;
+                }
+            }
+
+            selectedFpsIndex = nearest;
         }
 
         var fpsCycler = new OptionCycler(theme, "Max Frame Rate", FpsCapLabels, selectedFpsIndex)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
             ContentWidth = 320f,
         };
         fpsCycler.SelectionChanged += index =>
@@ -247,8 +310,8 @@ public sealed class SettingsScreen : ShellScreen
         int currentRes = Context.Host.RenderScaleMode;
         var resCycler = new OptionCycler(theme, "Resolution Quality", RenderScaleLabels, Math.Clamp(currentRes, 0, 3))
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
             ContentWidth = 320f,
         };
         resCycler.SelectionChanged += index =>
@@ -265,8 +328,8 @@ public sealed class SettingsScreen : ShellScreen
         float initialSun = LightingCVars.SunBrightness.Value;
         var sunSlider = new Slider(theme, "Sun", 50f, 300f, (int)Math.Round(initialSun * 100f), 5f)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
         };
         sunSlider.ValueChanged += value =>
         {
@@ -280,8 +343,8 @@ public sealed class SettingsScreen : ShellScreen
         bool smoothState = FrameCVars.SmoothPresentation.Value;
         var smoothToggle = new Toggle(theme, "Smooth Motion", smoothState)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
             Tooltip = "Draw the world at your display's rate instead of the original's fixed 30 steps a second. Off restores the original cadence.",
         };
         smoothToggle.ValueChanged += val =>
@@ -294,8 +357,8 @@ public sealed class SettingsScreen : ShellScreen
         bool showFpsState = DisplayCVars.ShowFps.Value;
         var fpsToggle = new Toggle(theme, "Show FPS Counter", showFpsState)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
         };
         fpsToggle.ValueChanged += val =>
         {
@@ -307,8 +370,8 @@ public sealed class SettingsScreen : ShellScreen
         // Texture sharpness is the knob for Ray's "snow looks too smooth": vanilla
         // pins anisotropy to 1 (off), and without it the ground smears towards the
         // horizon. The rest are the combat/weather picture knobs that are live on
-        // this path. Both texture rows apply to textures loaded after the
-        // change, so they take effect on the next level.
+        // this path. The texture rows apply at once now -- changing one re-resolves the
+        // samplers of textures already loaded -- instead of waiting for the next level.
         configStack.AddChild(new GroupHeader(theme, "Graphics quality") { Margin = new Thickness(0f, 18f, 0f, 4f) });
 
         // ── Texture Sharpness: anisotropic filtering (Off / 4x / 8x / 16x) ─────
@@ -321,10 +384,10 @@ public sealed class SettingsScreen : ShellScreen
 
         var anisotropyCycler = new OptionCycler(theme, "Texture Sharpness", AnisotropyLabels, selectedAnisotropyIndex)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
             ContentWidth = 320f,
-            Tooltip = "How sharp the ground stays into the distance. Off is the original's look; higher keeps snow and terrain crisp towards the horizon. Takes effect on the next level.",
+            Tooltip = "How sharp the ground stays into the distance. Off is the original's look; higher keeps snow and terrain crisp towards the horizon. Applies immediately.",
         };
         anisotropyCycler.SelectionChanged += index =>
         {
@@ -336,9 +399,9 @@ public sealed class SettingsScreen : ShellScreen
         bool mipBlendState = !MaterialCVars.PointMips.Value;
         var mipBlendToggle = new Toggle(theme, "Blend Mip Levels", mipBlendState)
         {
-            Width = 980f,
-            Height = 56f,
-            Tooltip = "Blend between mip levels instead of taking the nearest one, as the original does. Off is the original's slightly crisper, slightly shimmering look. Takes effect on the next level.",
+            Width = 1150f,
+            Height = 68f,
+            Tooltip = "Blend between mip levels instead of taking the nearest one, as the original does. Off is the original's slightly crisper, slightly shimmering look. Applies immediately.",
         };
         mipBlendToggle.ValueChanged += val =>
         {
@@ -346,12 +409,30 @@ public sealed class SettingsScreen : ShellScreen
         };
         configStack.AddChild(mipBlendToggle);
 
+        // ── Texture Quality: how sharp textures stay at a distance ───────────
+        // A bias on the mip selection, on top of what the render scale asks for: High samples one
+        // level sharper, Low one softer. It reaches textures already loaded, so it shows at once.
+        // Vulkan only -- WebGPU has no mip-bias sampler state and samples unbiased.
+        int currentTextureQuality = Math.Clamp(MaterialCVars.TextureQuality.Value, 0, 2);
+        var textureQualityCycler = new OptionCycler(theme, "Texture Quality", TextureQualityLabels, currentTextureQuality)
+        {
+            Width = 1150f,
+            Height = 68f,
+            ContentWidth = 320f,
+            Tooltip = "How sharp textures stay at a distance. High samples the sharper mip levels; Low softens them. Applies immediately, on Vulkan.",
+        };
+        textureQualityCycler.SelectionChanged += index =>
+        {
+            MaterialCVars.TextureQuality.Value = index;
+        };
+        configStack.AddChild(textureQualityCycler);
+
         // ── Muzzle Flash: how bright the flame at the barrel is ───────────────
         float initialMuzzleFlash = CombatEffectCVars.MuzzleFlash.Value;
         var muzzleSlider = new Slider(theme, "Muzzle Flash", 0f, 100f, (int)Math.Round(initialMuzzleFlash * 100f), 5f)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
             Tooltip = "How bright the flame at the barrel is. 100% is the original's; 0 removes it.",
         };
         muzzleSlider.ValueChanged += value =>
@@ -360,40 +441,19 @@ public sealed class SettingsScreen : ShellScreen
         };
         configStack.AddChild(muzzleSlider);
 
-        // ── Impact Effects: the original's own dust, chips and blood ──────────
-        bool impactEffectsState = CombatEffectCVars.ImpactEffects.Value;
-        var impactEffectsToggle = new Toggle(theme, "Impact Effects", impactEffectsState)
-        {
-            Width = 980f,
-            Height = 56f,
-            Tooltip = "The original's own impact dust, surface chips and blood where rounds land.",
-        };
-        impactEffectsToggle.ValueChanged += val =>
-        {
-            CombatEffectCVars.ImpactEffects.Value = val;
-        };
-        configStack.AddChild(impactEffectsToggle);
-
-        // ── Impact Particles: the remaster's extra burst where a round lands ───
-        float initialImpactParticles = CombatEffectCVars.ImpactParticles.Value;
-        var impactParticlesSlider = new Slider(theme, "Impact Particles", 0f, 200f, (int)Math.Round(initialImpactParticles * 100f), 10f)
-        {
-            Width = 980f,
-            Height = 56f,
-            Tooltip = "Extra sparks, dust and debris where rounds land, chosen to suit the surface hit. 0 is the original's effects only; 100% is the authored burst.",
-        };
-        impactParticlesSlider.ValueChanged += value =>
-        {
-            CombatEffectCVars.ImpactParticles.Value = Math.Clamp(value / 100f, 0f, 2f);
-        };
-        configStack.AddChild(impactParticlesSlider);
+        // Impact Effects and Impact Particles are deliberately NOT here any more: both are I.G.I. 1
+        // systems with no I.G.I. 2 input. The retail impacts view is only registered by the I.G.I. 1
+        // presenter, so the toggle gated a null draw; the particle bursts only ever came from the
+        // I.G.I. 1 rig's ballistics, which never fires on this title, and no I.G.I. 2 code calls the
+        // burst path. Restoring them needs I.G.I. 2 gunfire impact recording plus an I.G.I. 2
+        // MissionEffects presenter, as separate work.
 
         // ── Weather: the rain or snow the level authors gave the mission ──────
         bool weatherState = WeatherCVars.WeatherEnabled.Value;
         var weatherToggle = new Toggle(theme, "Weather", weatherState)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
             Tooltip = "Draw the rain or snow the level authors gave each mission.",
         };
         weatherToggle.ValueChanged += val =>
@@ -406,8 +466,8 @@ public sealed class SettingsScreen : ShellScreen
         bool stormState = WeatherCVars.Storm.Value;
         var stormToggle = new Toggle(theme, "Storm Effects", stormState)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
             Tooltip = "Wind-blown storm rain with splashes and lightning, instead of the original's fixed rain band. Only where a level rains.",
         };
         stormToggle.ValueChanged += val =>
@@ -423,8 +483,8 @@ public sealed class SettingsScreen : ShellScreen
         float initialCrosshair = HudCVars.CrosshairScale.Value;
         var crosshairSlider = new Slider(theme, "Crosshair size", 50f, 300f, (int)Math.Round(initialCrosshair * 100f), 5f)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
         };
         crosshairSlider.ValueChanged += value =>
         {
@@ -434,8 +494,8 @@ public sealed class SettingsScreen : ShellScreen
 
         var crosshairColourBtn = new Button(theme, "Crosshair colour: " + CrosshairPalette.Names[HudCVars.CrosshairColor.Value])
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
         };
         crosshairColourBtn.Activated += () =>
         {
@@ -448,8 +508,8 @@ public sealed class SettingsScreen : ShellScreen
         bool crosshairOutlineState = HudCVars.CrosshairOutline.Value;
         var crosshairOutlineToggle = new Toggle(theme, "Crosshair outline", crosshairOutlineState)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
         };
         crosshairOutlineToggle.ValueChanged += val =>
         {
@@ -461,8 +521,8 @@ public sealed class SettingsScreen : ShellScreen
         bool invertState = Context.Config.Active?.InvertMouse ?? false;
         var invertToggle = new Toggle(theme, "Invert Look / Mouse", invertState)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
         };
         invertToggle.ValueChanged += val =>
         {
@@ -479,8 +539,8 @@ public sealed class SettingsScreen : ShellScreen
         bool gyroState = Context.Config.Active?.GyroEnabled ?? false;
         var gyroToggle = new Toggle(theme, "Gyroscope aim", gyroState)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
             Tooltip = "Tilt the phone to aim. Only on Android, and only while playing.",
         };
         gyroToggle.ValueChanged += val =>
@@ -496,8 +556,8 @@ public sealed class SettingsScreen : ShellScreen
         float gyroSensState = Context.Config.Active?.GyroSensitivity ?? 0.5f;
         var gyroSensSlider = new Slider(theme, "Gyroscope sensitivity", 0f, 1f, gyroSensState, 0.05f)
         {
-            Width = 980f,
-            Height = 56f,
+            Width = 1150f,
+            Height = 68f,
             Format = v => string.Create(
                 CultureInfo.InvariantCulture,
                 $"{MouseLookSettings.FromSensitivity(v, invertPitch: false).TurnDistanceCentimetres():0} cm/360°"),
@@ -527,24 +587,29 @@ public sealed class SettingsScreen : ShellScreen
 
         var okBtn = new IgiMenuButton(theme, "OK")
         {
-            TextSize = 30f,
-            Height = 60f,
-            Width = 180f,
+            TextSize = 36f,
+            Height = 72f,
+            Width = 220f,
             NormalColor = Bgra32.FromRgb(80, 160, 255),
             HoverColor = Bgra32.FromRgb(228, 238, 252),
         };
         okBtn.Activated += () =>
         {
             Context.Host.SaveSettings();
+
+            // Profiles carry Invert, Gyro and gyro sensitivity, which settings.cfg never wrote: OK
+            // used to leave them to the save on exit, so they were lost whenever the app was killed
+            // or swiped away after OK instead of quit cleanly.
+            Context.Host.SaveProfiles();
             CloseConfig();
         };
         btnBar.Add(okBtn);
 
         var cancelBtn = new IgiMenuButton(theme, "Cancel")
         {
-            TextSize = 30f,
-            Height = 60f,
-            Width = 180f,
+            TextSize = 36f,
+            Height = 72f,
+            Width = 220f,
             NormalColor = Bgra32.FromRgb(80, 160, 255),
             HoverColor = Bgra32.FromRgb(228, 238, 252),
         };
@@ -555,16 +620,15 @@ public sealed class SettingsScreen : ShellScreen
             Context.Host.TouchSensitivity = _initialSensitivity;
             Context.Host.RenderScaleMode = _initialRenderScale;
             ReconstructionCVars.FrameLimit.Value = _initialFpsCap;
-            LayoutContext.GlobalUiScale = _initialUiScale;
-            LayoutContext.GlobalTextScale = _initialTextScale;
+            DisplayCVars.UiScale.Value = _initialUiScale;
+            DisplayCVars.TextScale.Value = _initialTextScale;
             DisplayCVars.ShowFps.Value = _initialShowFps;
             LightingCVars.SunBrightness.Value = _initialSunBrightness;
             FrameCVars.SmoothPresentation.Value = _initialSmooth;
             MaterialCVars.Anisotropy.Value = _initialAnisotropy;
             MaterialCVars.PointMips.Value = _initialPointMips;
+            MaterialCVars.TextureQuality.Value = _initialTextureQuality;
             CombatEffectCVars.MuzzleFlash.Value = _initialMuzzleFlash;
-            CombatEffectCVars.ImpactEffects.Value = _initialImpactEffects;
-            CombatEffectCVars.ImpactParticles.Value = _initialImpactParticles;
             WeatherCVars.WeatherEnabled.Value = _initialWeather;
             WeatherCVars.Storm.Value = _initialStorm;
             HudCVars.CrosshairScale.Value = _initialCrosshairScale;

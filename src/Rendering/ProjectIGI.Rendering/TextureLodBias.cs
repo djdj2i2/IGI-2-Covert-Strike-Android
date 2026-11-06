@@ -27,6 +27,17 @@ public static class TextureLodBias
         float scale = Math.Clamp(ReconstructionCVars.RenderScale.Value, 0.25f, 1f);
         float resolution = MathF.Log2(scale);
         float temporal = ReconstructionCVars.TemporalFeedback.Value < 1f ? -0.3f : 0f;
-        return Math.Clamp(MathF.Max(resolution + temporal, -2f), -4f, 4f);
+
+        // The player's own texture quality: high samples one level sharper than the scale asks for,
+        // low one level softer. It rides the same bias, so it reaches textures already loaded through
+        // the same re-resolve, and it is honoured wherever the adapter offers a mip bias at all --
+        // Vulkan does; WebGPU has no such sampler state and samples unbiased.
+        float quality = MaterialCVars.TextureQuality.Value switch
+        {
+            0 => 1f,
+            2 => -1f,
+            _ => 0f,
+        };
+        return Math.Clamp(MathF.Max(resolution + temporal + quality, -2f), -4f, 4f);
     }
 }

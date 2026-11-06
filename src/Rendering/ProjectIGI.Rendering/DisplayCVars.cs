@@ -67,4 +67,31 @@ public static class DisplayCVars
         false,
         CVarOptions.Archive,
         "Display a small FPS counter text overlay at the top left corner of the screen.");
+
+    /// <summary>How large the shell's interface draws, as a multiplier on the authored sizes.</summary>
+    /// <remarks>
+    /// The Configuration screen's "UI Size" slider. Read at startup and on change by the host, which
+    /// hands it to the layout as its user scale; the shell is authored at a 1920x1080 reference, so on
+    /// a phone it renders small without it.
+    /// </remarks>
+    public static readonly NumericCVar<float> UiScale = CVar.Float(
+        "r_ui_scale",
+        1.2f,
+        0.8f,
+        2.0f,
+        CVarOptions.Archive,
+        "Shell interface size as a multiplier: 1.2 is the default that keeps the Configuration screen readable on a phone.");
+
+    /// <summary>How large the shell's text draws, as a multiplier on the text sizes.</summary>
+    /// <remarks>
+    /// The Configuration screen's "Text Size" slider. The row widgets multiply the size they resolve
+    /// by this as they draw, so it takes effect live; the shell's geometry is untouched.
+    /// </remarks>
+    public static readonly NumericCVar<float> TextScale = CVar.Float(
+        "r_text_scale",
+        1.0f,
+        0.8f,
+        1.5f,
+        CVarOptions.Archive,
+        "Shell text size as a multiplier on the row captions and values.");
 }

@@ -32,13 +32,13 @@ public class GroupHeader : UiElement
 
     /// <inheritdoc/>
     protected override UiVec2 MeasureContent(LayoutContext context, UiVec2 available) =>
-        new(available.X, Theme.Mono.LineHeight(context.Px(11f)) + context.Px(10f));
+        new(available.X, Theme.Mono.LineHeight(context.Px(14f) * LayoutContext.GlobalTextScale) + context.Px(10f));
 
     /// <inheritdoc/>
     protected override void OnDraw(UiPainter painter)
     {
         LayoutContext context = painter.Context;
-        float size = context.Px(11f);
+        float size = context.Px(14f) * LayoutContext.GlobalTextScale;
         float line = Theme.Mono.LineHeight(size);
         UiVec2 pen = painter.DrawLabel(Theme.Mono, _upper, Bounds.TopLeft, size, Theme.Accent, 0.28f);
         float ruleX = pen.X + context.Px(12f);

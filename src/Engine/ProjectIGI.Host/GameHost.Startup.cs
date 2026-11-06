@@ -17,6 +17,7 @@ using ProjectIGI.Presentation.Cameras;
 using ProjectIGI.Presentation.Lighting;
 using ProjectIGI.Presentation.Text;
 using ProjectIGI.Rendering;
+using ProjectIGI.UI.Layout;
 using ProjectIGI.UI.Widgets;
 
 namespace ProjectIGI.Host;
@@ -95,6 +96,15 @@ public sealed partial class GameHost
         WhenChanged(MaterialCVars.Anisotropy, () => _device.SetTextureQuality(MaterialCVars.Anisotropy.Value));
         _device.SetPointMips(MaterialCVars.PointMips.Value);
         WhenChanged(MaterialCVars.PointMips, () => _device.SetPointMips(MaterialCVars.PointMips.Value));
+
+        // The shell's interface and text sizes, kept in force the same way: the statics the layout
+        // reads are set from the saved values here -- the console has already loaded settings.cfg by
+        // now -- and follow the settings live afterwards. Without this the two sliders were session
+        // only: they wrote statics nothing ever saved or restored.
+        LayoutContext.GlobalUiScale = DisplayCVars.UiScale.Value;
+        WhenChanged(DisplayCVars.UiScale, () => LayoutContext.GlobalUiScale = DisplayCVars.UiScale.Value);
+        LayoutContext.GlobalTextScale = DisplayCVars.TextScale.Value;
+        WhenChanged(DisplayCVars.TextScale, () => LayoutContext.GlobalTextScale = DisplayCVars.TextScale.Value);
 
         _device.VSyncEnabled = FrameCVars.VSync.Value;
         WhenChanged(FrameCVars.VSync, () => _device.VSyncEnabled = FrameCVars.VSync.Value);
@@ -474,7 +484,6 @@ public sealed partial class GameHost
         // The menu is held to the display's rate, and the game to r_frame_limit, rather than rendering as
         // fast as they can, where the platform leaves the rate to the loop. See IFramePacer.
         state.MenuPacer = _platform.CreateFramePacer();
-        state.LastPassRendered = false;
     }
 
     /// <summary>Builds the front end the command line asked for: none for a bake, the original's menus, or the cinematic shell.</summary>
@@ -727,7 +736,15 @@ public sealed partial class GameHost
                     }
                 },
                 getTouchOpacity: () => Presentation.Hud.Remastered.Touch.TouchControls.GlobalOpacity,
-                setTouchOpacity: opacity => Presentation.Hud.Remastered.Touch.TouchControls.GlobalOpacity = opacity,
+                setTouchOpacity: opacity =>
+                {
+                    Presentation.Hud.Remastered.Touch.TouchControls.GlobalOpacity = opacity;
+
+                    // As the sensitivity setter does below: without the save, a changed alpha lived
+                    // only until the process ended, and only survived at all when the sensitivity
+                    // slider or the customiser happened to save the layout file after it.
+                    Presentation.Hud.Remastered.Touch.TouchControls.SaveLayout();
+                },
                 getRenderScale: () => _window.RenderScaleMode,
                 setRenderScale: mode => _window.RenderScaleMode = mode,
                 getTouchSensitivity: () => Presentation.Hud.Remastered.Touch.TouchControls.TouchSensitivity,

@@ -99,8 +99,6 @@ internal sealed class FrameLoopState
 
     public IFramePacer MenuPacer { get; set; } = default!;
 
-    public bool LastPassRendered { get; set; }
-
     public long PassStartedAt { get; set; }
 
     public FramePerformanceTracker FramePerformance { get; set; } = default!;

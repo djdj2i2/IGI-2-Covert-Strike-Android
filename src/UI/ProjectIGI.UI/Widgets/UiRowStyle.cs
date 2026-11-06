@@ -45,10 +45,10 @@ public static class UiRowStyle
         ArgumentNullException.ThrowIfNull(control);
         ArgumentNullException.ThrowIfNull(context);
         UiTheme theme = control.Theme;
-        float caption = theme.Body.LineHeight(context.Px(theme.BodyTextSize)) + context.Px(12f);
+        float caption = theme.Body.LineHeight(context.Px(theme.BodyTextSize) * LayoutContext.GlobalTextScale) + context.Px(12f);
         if (control.Hint.Length > 0)
         {
-            caption += context.Px(3f) + theme.Body.LineHeight(context.Px(HintSize(theme)));
+            caption += context.Px(3f) + theme.Body.LineHeight(context.Px(HintSize(theme)) * LayoutContext.GlobalTextScale);
         }
 
         return new UiVec2(available.X, MathF.Max(context.Px(theme.RowHeight), caption));
@@ -87,7 +87,7 @@ public static class UiRowStyle
             return;
         }
 
-        float sizePx = painter.Context.Px(theme.BodyTextSize);
+        float sizePx = painter.Context.Px(theme.BodyTextSize) * LayoutContext.GlobalTextScale;
         Bgra32 color = !control.IsEnabled ? theme.TextDisabled : Interpolate.Lerp(theme.TextLabel, theme.TextBright, highlight);
         float x = bounds.X + painter.Context.Px(Inset);
         float room = MathF.Min(bounds.Right - painter.Context.Px(Inset), controlLeft - painter.Context.Px(Gap)) - x;
@@ -100,7 +100,7 @@ public static class UiRowStyle
         }
 
         // A caption with a quieter line of explanation under it, the pair centred in the row.
-        float hintPx = painter.Context.Px(HintSize(theme));
+        float hintPx = painter.Context.Px(HintSize(theme)) * LayoutContext.GlobalTextScale;
         float gap = painter.Context.Px(3f);
         float block = theme.Body.LineHeight(sizePx) + gap + theme.Body.LineHeight(hintPx);
         float top = bounds.Y + ((bounds.Height - block) * 0.5f);

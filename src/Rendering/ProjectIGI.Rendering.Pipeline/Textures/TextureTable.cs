@@ -17,7 +17,7 @@ namespace ProjectIGI.Rendering.Pipeline.Textures;
 /// <para>
 /// Samplers are shared by description rather than made per texture. A level has thousands of textures
 /// and perhaps four distinct ways of filtering them, and a sampler per texture is thousands of objects
-/// where a handful would do — which on some drivers is a hard limit rather than a waste.
+/// where a handful would do â€” which on some drivers is a hard limit rather than a waste.
 /// </para>
 /// </remarks>
 public sealed class TextureTable : ITextureBindingSource, IDisposable
@@ -87,6 +87,19 @@ public sealed class TextureTable : ITextureBindingSource, IDisposable
         }
 
         MipLodBias = bias;
+        return ReapplySamplers();
+    }
+
+    /// <summary>Re-resolves every mipmapped texture's sampler at the current filtering, anisotropy and bias.</summary>
+    /// <returns>The handles whose sampler changed, so the bind groups that captured the old one can go.</returns>
+    /// <remarks>
+    /// Samplers are shared by description, so this costs a handful of new samplers, not one per texture.
+    /// This is what makes a filtering change show at once instead of waiting for the next level.
+    /// </remarks>
+    public IReadOnlyList<uint> ReapplySamplers()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
         List<uint> changed = [];
         foreach ((uint id, Entry entry) in _textures.ToArray())
         {
@@ -111,18 +124,18 @@ public sealed class TextureTable : ITextureBindingSource, IDisposable
 
     /// <summary>Gets or sets how many samples an anisotropic lookup may take.</summary>
     /// <remarks>
-    /// Applied to textures created afterwards. Changing it does not re-make what is already loaded,
-    /// which is what the original did too: the setting takes effect on the next level.
+    /// Read when a sampler is made, and re-resolved at once for textures already loaded by
+    /// <see cref="ReapplySamplers"/>, so the setting shows immediately rather than on the next level.
     /// </remarks>
     public int MaxAnisotropy { get; set; } = 1;
 
-    /// <summary>Gets or sets whether textures created afterwards take their nearest mip level rather than blending two.</summary>
+    /// <summary>Gets or sets whether textures take their nearest mip level rather than blending two; re-resolved at once for textures already loaded.</summary>
     public bool PointMips { get; set; }
 
     /// <summary>Creates a texture and uploads every level the caller handed over.</summary>
     /// <param name="description">Its size, how many levels it has, and how it is filtered.</param>
     /// <param name="pixels">
-    /// The whole chain, tightly packed, largest level first — which is how the engine lays a texture out
+    /// The whole chain, tightly packed, largest level first â€” which is how the engine lays a texture out
     /// and what every backend here is given. Uploading only the first level leaves the rest of the chain
     /// undefined, and nothing says so: the texture looks right up close and reads as BLACK the moment it
     /// is minified enough to pick a lower level, which is most of a level most of the time.
@@ -311,7 +324,7 @@ public sealed class TextureTable : ITextureBindingSource, IDisposable
     /// <summary>Takes a handle from the table's own sequence that names none of its textures.</summary>
     /// <returns>The handle, which no texture of the table will ever be given.</returns>
     /// <remarks>
-    /// For an image the device resolves itself — a scene target, a card page — which is remade under the
+    /// For an image the device resolves itself â€” a scene target, a card page â€” which is remade under the
     /// handle the game keeps. Taking it from the same sequence is what keeps it from colliding with one.
     /// </remarks>
     public TextureHandle Reserve()
@@ -325,7 +338,7 @@ public sealed class TextureTable : ITextureBindingSource, IDisposable
     /// <param name="description">How it is to be filtered.</param>
     /// <returns>Its handle.</returns>
     /// <remarks>
-    /// For the frames the renderer captures for itself — a held backdrop, a card page — which are made
+    /// For the frames the renderer captures for itself â€” a held backdrop, a card page â€” which are made
     /// as targets rather than uploaded and still have to be bindable by handle afterwards.
     /// </remarks>
     public TextureHandle Adopt(IRhiTexture texture, in TextureDescription description)
