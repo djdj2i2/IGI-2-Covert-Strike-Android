@@ -105,6 +105,10 @@ public sealed partial class GameHost : IDisposable
     private ResourceRegistry _resources = null!;
     private ResourceOverrides _overrides = null!;
 
+    // TEMPORARY DIAGNOSTIC (IGI 2 black main menu): throttle for the shell-draw report below.
+    // Remove after diagnosis.
+    private DateTime _lastShellDiag = DateTime.MinValue;
+
     // What the last scan of that folder found, reported once the console has started -- until then the
     // log verbosity the player configured has not been applied and an information line goes nowhere
     // anybody can see.

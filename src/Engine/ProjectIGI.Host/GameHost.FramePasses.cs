@@ -587,6 +587,23 @@ public sealed partial class GameHost
             float shellOpacity = MathF.Min(
                 _entry.IsRunning ? _entry.ShellOpacity : 1f,
                 _loadSequence.ShellOpacity);
+
+            // TEMPORARY DIAGNOSTIC (IGI 2 black main menu): report why the shell draws or not —
+            // menu mode, the shell's top screen, the entry/load-sequence opacity that gates it,
+            // and whether the menu scene is up. Logged to stdout (logcat) at most once a second.
+            // Remove after diagnosis.
+            DateTime shellDiagNow = DateTime.UtcNow;
+            if (shellDiagNow - _lastShellDiag >= TimeSpan.FromSeconds(1))
+            {
+                _lastShellDiag = shellDiagNow;
+                Console.WriteLine(
+                    $"[Diag] Shell draw: menuMode={_menuFlow.MenuMode} shellNull={state.Shell is null} " +
+                    $"top={state.Shell?.Stack.Top?.GetType().Name} entryRunning={_entry.IsRunning} " +
+                    $"entryOpacity={(_entry.IsRunning ? _entry.ShellOpacity : 1f):F2} " +
+                    $"loadPhase={_loadSequence.Phase} loadOpacity={_loadSequence.ShellOpacity:F2} " +
+                    $"shellOpacity={shellOpacity:F2} sceneNull={_scene is null}");
+            }
+
             if (shellOpacity > 0.001f)
             {
                 // The frame so far — the level, the dissolve over it — blurred into the levels the
