@@ -209,7 +209,7 @@ public class ScrollView : UiElement, IWheelScrollable
         (float thumbY, float thumbHeight) = Thumb(_offset.Value);
 
         painter.FillRect(new UiRect(x, Bounds.Y, trackW, Bounds.Height), _theme.Border.WithAlpha(60), UiBlend.AlphaBlend);
-        painter.FillRect(new UiRect(x, thumbY, trackW, thumbHeight), ProjectIGI.Core.Graphics.Bgra32.FromRgb(55, 235, 95), UiBlend.AlphaBlend);
+        painter.FillRect(new UiRect(x, thumbY, trackW, thumbHeight), ProjectIGI.Core.Graphics.Bgra32.FromRgb(80, 160, 255), UiBlend.AlphaBlend);
     }
 
     // The thumb's top and length in pixels at a scroll offset: its length the fraction of the content shown.

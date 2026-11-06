@@ -129,7 +129,7 @@ public sealed class MainMenuScreen : ShellScreen
         root.Add(frame, new Anchor(UiVec2.Zero, UiVec2.One, Thickness.Zero));
 
         // Floating info label
-        _intelDialog = new Label(theme.Heading, "", 24f, Bgra32.FromRgb(165, 255, 185))
+        _intelDialog = new Label(theme.Heading, "", 24f, Bgra32.FromRgb(170, 210, 250))
         {
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Bottom,

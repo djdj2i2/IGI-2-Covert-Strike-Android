@@ -190,7 +190,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         // Authentic I.G.I. 2 Launcher Splash
         splashLayout = new FrameLayout(this);
-        splashLayout.setBackgroundColor(Color.rgb(10, 12, 8)); // #0a0c08
+        splashLayout.setBackgroundColor(Color.rgb(8, 10, 18)); // #0a0c08
 
         // 1. Background image (img.png)
         Bitmap bmp = null;
@@ -220,8 +220,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         // Dark tactical translucent background with green border
         GradientDrawable cardBg = new GradientDrawable();
-        cardBg.setColor(Color.argb(225, 10, 22, 14)); // Translucent dark green
-        cardBg.setStroke((int)(2 * density), Color.rgb(57, 227, 101)); // Phosphor green
+        cardBg.setColor(Color.argb(225, 10, 16, 30)); // Translucent dark green
+        cardBg.setStroke((int)(2 * density), Color.rgb(80, 160, 255)); // Phosphor green
         cardBg.setCornerRadius(10 * density);
         cardLayout.setBackground(cardBg);
 
@@ -231,7 +231,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         // Title
         TextView titleText = new TextView(this);
-        titleText.setTextColor(Color.rgb(57, 227, 101));
+        titleText.setTextColor(Color.rgb(80, 160, 255));
         titleText.setTextSize(18);
         titleText.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         titleText.setLetterSpacing(0.12f);
@@ -241,7 +241,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         // Subtitle
         TextView subtitleText = new TextView(this);
-        subtitleText.setTextColor(Color.rgb(180, 205, 185));
+        subtitleText.setTextColor(Color.rgb(170, 195, 225));
         subtitleText.setTextSize(11);
         subtitleText.setTypeface(Typeface.MONOSPACE);
         subtitleText.setGravity(Gravity.CENTER);
@@ -252,10 +252,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         // Glowing progress bar
         progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progressBar.setIndeterminate(true);
-        progressBar.setProgressTintList(ColorStateList.valueOf(Color.rgb(57, 227, 101)));
+        progressBar.setProgressTintList(ColorStateList.valueOf(Color.rgb(80, 160, 255)));
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             progressBar.getIndeterminateDrawable().setColorFilter(
-                new BlendModeColorFilter(Color.rgb(57, 227, 101), BlendMode.SRC_IN));
+                new BlendModeColorFilter(Color.rgb(80, 160, 255), BlendMode.SRC_IN));
         }
         LinearLayout.LayoutParams pbParams = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, (int)(5 * density));
@@ -264,7 +264,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         // Status Message Text
         statusText = new TextView(this);
-        statusText.setTextColor(Color.rgb(109, 184, 74));
+        statusText.setTextColor(Color.rgb(110, 160, 210));
         statusText.setTextSize(12);
         statusText.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         statusText.setGravity(Gravity.CENTER);
@@ -274,7 +274,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         // Renderer selector: the backend the engine starts on (Vulkan or WebGPU)
         TextView rendererLabel = new TextView(this);
-        rendererLabel.setTextColor(Color.rgb(180, 205, 185));
+        rendererLabel.setTextColor(Color.rgb(170, 195, 225));
         rendererLabel.setTextSize(10);
         rendererLabel.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         rendererLabel.setGravity(Gravity.CENTER);
@@ -325,8 +325,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         selectFolderBtn.setTextColor(Color.WHITE);
 
         GradientDrawable selectBg = new GradientDrawable();
-        selectBg.setColor(Color.rgb(20, 52, 28));
-        selectBg.setStroke((int)(1.5f * density), Color.rgb(57, 227, 101));
+        selectBg.setColor(Color.rgb(20, 35, 60));
+        selectBg.setStroke((int)(1.5f * density), Color.rgb(80, 160, 255));
         selectBg.setCornerRadius(6 * density);
         selectFolderBtn.setBackground(selectBg);
 
@@ -386,13 +386,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             playBg.setCornerRadius(6 * density);
 
             if (enabled) {
-                playBg.setColor(Color.rgb(57, 227, 101)); // Phosphor green
-                playBg.setStroke((int)(2 * density), Color.rgb(180, 255, 195));
+                playBg.setColor(Color.rgb(80, 160, 255)); // Phosphor green
+                playBg.setStroke((int)(2 * density), Color.rgb(190, 215, 255));
                 playBtn.setTextColor(Color.BLACK);
             } else {
-                playBg.setColor(Color.rgb(38, 48, 40)); // Disabled dark grey
-                playBg.setStroke((int)(1 * density), Color.rgb(65, 80, 68));
-                playBtn.setTextColor(Color.rgb(100, 120, 105));
+                playBg.setColor(Color.rgb(38, 44, 56)); // Disabled dark grey
+                playBg.setStroke((int)(1 * density), Color.rgb(65, 75, 95));
+                playBtn.setTextColor(Color.rgb(100, 115, 140));
             }
             playBtn.setBackground(playBg);
         });
@@ -416,11 +416,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(6 * density);
         if (selected) {
-            bg.setColor(Color.rgb(57, 227, 101)); // Phosphor green
-            bg.setStroke((int)(2 * density), Color.rgb(180, 255, 195));
+            bg.setColor(Color.rgb(80, 160, 255)); // Phosphor green
+            bg.setStroke((int)(2 * density), Color.rgb(190, 215, 255));
             btn.setTextColor(Color.BLACK);
         } else {
-            bg.setColor(Color.rgb(20, 52, 28)); // Dark green
+            bg.setColor(Color.rgb(20, 35, 60)); // Dark green
             bg.setStroke((int)(1 * density), Color.rgb(65, 80, 68));
             btn.setTextColor(Color.rgb(100, 120, 105));
         }

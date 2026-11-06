@@ -75,8 +75,8 @@ public sealed class MissionFailedScreen : ShellScreen
             TextSize = 34f,
             Height = 72f,
             Width = 660f,
-            NormalColor = Bgra32.FromRgb(78, 255, 120),
-            HoverColor = Bgra32.FromRgb(220, 255, 220),
+            NormalColor = Bgra32.FromRgb(80, 160, 255),
+            HoverColor = Bgra32.FromRgb(228, 238, 252),
         };
         restartBtn.Activated += () => Context.Host.RestartMission();
         contentStack.AddChild(restartBtn);

@@ -542,7 +542,7 @@ public sealed partial class GameHost
         var painter = UiPainter.Create(batch, new LayoutContext(_window.Width, _window.Height));
 
         // 1. Deep authentic IGI tactical black background
-        painter.FillRect(new UiRect(0f, 0f, width, height), Bgra32.FromRgb(10, 12, 8));
+        painter.FillRect(new UiRect(0f, 0f, width, height), Bgra32.FromRgb(8, 10, 18));
 
         // 2. Fullscreen authentic retail loading splashscreen (loading.png)
         UiImage loadingTexture = GetLoadingTexture();
@@ -553,7 +553,7 @@ public sealed partial class GameHost
         }
 
         // 3. Classic Authentic IGI Phosphor Green Bottom Progress Bar
-        Bgra32 brightGreen = Bgra32.FromRgb(57, 227, 101); // #39e365
+        Bgra32 brightGreen = Bgra32.FromRgb(80, 160, 255); // #39e365
         float barMargin = 32f * scale;
         float barWidth = width - (barMargin * 2f);
         float barHeight = 8f * scale;
@@ -561,9 +561,9 @@ public sealed partial class GameHost
         float progress = Math.Clamp(_warmUp.Progress, 0.05f, 1f);
 
         // Progress bar background track & border
-        painter.FillRect(new UiRect(barMargin, barY, barWidth, barHeight), Bgra32.FromRgb(15, 35, 12));
-        painter.FillRect(new UiRect(barMargin - 1f, barY - 1f, barWidth + 2f, 1f), new Bgra32(120, 255, 78, 100));
-        painter.FillRect(new UiRect(barMargin - 1f, barY + barHeight, barWidth + 2f, 1f), new Bgra32(120, 255, 78, 100));
+        painter.FillRect(new UiRect(barMargin, barY, barWidth, barHeight), Bgra32.FromRgb(15, 28, 55));
+        painter.FillRect(new UiRect(barMargin - 1f, barY - 1f, barWidth + 2f, 1f), new Bgra32(120, 180, 255, 100));
+        painter.FillRect(new UiRect(barMargin - 1f, barY + barHeight, barWidth + 2f, 1f), new Bgra32(120, 180, 255, 100));
 
         // Green progress fill
         painter.FillRect(new UiRect(barMargin, barY, barWidth * progress, barHeight), brightGreen);
@@ -589,12 +589,12 @@ public sealed partial class GameHost
             string stage = _warmUp.IsActive && !string.IsNullOrEmpty(_warmUp.Stage) ? _warmUp.Stage : "LOADING";
             int dots = (int)(seconds * 3f) % 4;
             string dotStr = new('.', dots);
-            painter.DrawLabel(st.Mono, $"◆ {stage.ToUpperInvariant()}{dotStr}", new UiVec2(barMargin, labelY), labelSize, Bgra32.FromRgb(101, 171, 85), 0.18f);
+            painter.DrawLabel(st.Mono, $"◆ {stage.ToUpperInvariant()}{dotStr}", new UiVec2(barMargin, labelY), labelSize, Bgra32.FromRgb(110, 160, 210), 0.18f);
 
             // Right: percentage
             string pct = FormattableString.Invariant($"{(int)(progress * 100f)}%");
             float pctW = st.Mono.MeasureWidth(pct, labelSize);
-            painter.DrawText(st.Mono, pct, new UiVec2(barMargin + barWidth - pctW, labelY), labelSize, Bgra32.FromRgb(184, 212, 138));
+            painter.DrawText(st.Mono, pct, new UiVec2(barMargin + barWidth - pctW, labelY), labelSize, Bgra32.FromRgb(180, 205, 240));
         }
 
         batch.End();

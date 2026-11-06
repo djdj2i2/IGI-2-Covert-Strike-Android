@@ -13,20 +13,20 @@ public static class TouchControlsRenderer
 {
     // In-game buttons: flat I.G.I. olive. Idle is translucent so the game shows through;
     // held is clearly more solid, so a press reads instantly. Glyphs stay fully opaque to stay readable.
-    private static readonly Bgra32 IgiFill = Bgra32.FromRgba(22, 28, 16, 135);
-    private static readonly Bgra32 IgiFillHeld = Bgra32.FromRgba(38, 48, 26, 215);
-    private static readonly Bgra32 IgiRim = Bgra32.FromRgba(158, 176, 118, 200);
-    private static readonly Bgra32 IgiRimHeld = Bgra32.FromRgba(190, 205, 140, 255);
-    private static readonly Bgra32 IgiInk = Bgra32.FromRgba(238, 242, 224, 255);
-    private static readonly Bgra32 IgiInkFaint = Bgra32.FromRgba(150, 165, 115, 165);
-    private static readonly Bgra32 IgiStickFill = Bgra32.FromRgba(22, 28, 16, 90);
+    private static readonly Bgra32 IgiFill = Bgra32.FromRgba(16, 24, 42, 135);
+    private static readonly Bgra32 IgiFillHeld = Bgra32.FromRgba(28, 44, 72, 215);
+    private static readonly Bgra32 IgiRim = Bgra32.FromRgba(125, 170, 225, 200);
+    private static readonly Bgra32 IgiRimHeld = Bgra32.FromRgba(160, 195, 245, 255);
+    private static readonly Bgra32 IgiInk = Bgra32.FromRgba(228, 238, 252, 255);
+    private static readonly Bgra32 IgiInkFaint = Bgra32.FromRgba(140, 165, 200, 165);
+    private static readonly Bgra32 IgiStickFill = Bgra32.FromRgba(16, 24, 42, 90);
     // The palette below stays for the customization toolbar only; it is a config tool, not the game buttons.
-    private static readonly Bgra32 Rim = Bgra32.FromRgba(78, 255, 120, 90);
-    private static readonly Bgra32 Ink = Bgra32.FromRgba(220, 255, 215, 240);
-    private static readonly Bgra32 InkFaint = Bgra32.FromRgba(110, 160, 105, 140);
+    private static readonly Bgra32 Rim = Bgra32.FromRgba(80, 160, 255, 90);
+    private static readonly Bgra32 Ink = Bgra32.FromRgba(228, 238, 252, 240);
+    private static readonly Bgra32 InkFaint = Bgra32.FromRgba(140, 165, 200, 140);
     private static readonly Bgra32 Shade = Bgra32.FromRgba(0, 0, 0, 110);
-    private static readonly Bgra32 DefaultAccent = Bgra32.FromRgba(78, 255, 120, 255);
-    private static readonly Bgra32 HighlightSelect = Bgra32.FromRgba(125, 255, 155, 255);
+    private static readonly Bgra32 DefaultAccent = Bgra32.FromRgba(80, 160, 255, 255);
+    private static readonly Bgra32 HighlightSelect = Bgra32.FromRgba(160, 195, 245, 255);
 
     /// <summary>Draws the controls in play or in customization mode.</summary>
     public static void Draw(
@@ -97,7 +97,7 @@ public static class TouchControlsRenderer
         float topY = safe.Y + Px(8f);
         float barH = Px(60f);
         UiRect barRect = new(safe.X, safe.Y, safe.Width, barH + Px(16f));
-        painter.FillRect(barRect, Bgra32.FromRgba(6, 14, 8, 230));
+        painter.FillRect(barRect, Bgra32.FromRgba(8, 10, 18, 230));
         painter.StrokeLine(new UiVec2(safe.X, barRect.Bottom), new UiVec2(safe.Right, barRect.Bottom), Px(1.5f), Rim);
 
         // Header Title
@@ -179,7 +179,7 @@ public static class TouchControlsRenderer
 
     private static void DrawToolButton(UiPainter painter, UiRect box, string text, UiFont? font, float fontSize, bool fillAccent = false)
     {
-        painter.FillRect(box, fillAccent ? DefaultAccent : Bgra32.FromRgba(10, 20, 12, 220));
+        painter.FillRect(box, fillAccent ? DefaultAccent : Bgra32.FromRgba(10, 16, 30, 220));
         painter.StrokeRect(box, 1.5f, fillAccent ? HighlightSelect : Rim);
         if (font is not null)
         {
