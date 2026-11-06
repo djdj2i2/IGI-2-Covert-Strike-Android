@@ -1,5 +1,6 @@
 using ProjectIGI.Core.Diagnostics;
 using ProjectIGI.Engine.Titles;
+using ProjectIGI.Game.Config;
 using ProjectIGI.Game.Igi2.Config;
 using ProjectIGI.Game.Igi2.Saves;
 using ProjectIGI.Game.Igi2.World;
@@ -33,10 +34,14 @@ namespace ProjectIGI.Game.Igi2.Menus;
 public sealed class Igi2ConfigNatives : IMenuConfiguration, IMenuMissionStats
 {
     private readonly Igi2GameConfig _config;
+    private readonly GameConfig? _shared;
     private readonly Func<IMissionCatalogue<MissionDescriptor>?> _missions;
     private readonly Func<MenuStringTable?> _strings;
     private readonly Igi2SaveSession? _saves;
     private readonly IProjectIGILogger _logger;
+
+    /// <summary>The mark a locked mission carries in the list.</summary>
+    private const string LockedSuffix = " (Locked)";
 
     /// <summary>Initializes a new instance of the <see cref="Igi2ConfigNatives"/> class.</summary>
     /// <param name="config">The player profiles the settings screens read and write.</param>
@@ -44,19 +49,22 @@ public sealed class Igi2ConfigNatives : IMenuConfiguration, IMenuMissionStats
     /// <param name="strings">The language's text, or <see langword="null"/> before it is loaded.</param>
     /// <param name="saves">The session's save games, or <see langword="null"/> when the menu has none to count.</param>
     /// <param name="logger">Where the mission fill is reported.</param>
+    /// <param name="sharedConfiguration">The shared profiles, whose active profile the mission-completion flow advances; the menu reads its frontier too, because a completion writes there and never into the sequel's own profiles.</param>
     /// <exception cref="ArgumentNullException">A required argument is <see langword="null"/>.</exception>
     public Igi2ConfigNatives(
         Igi2GameConfig config,
         Func<IMissionCatalogue<MissionDescriptor>?> missions,
         Func<MenuStringTable?> strings,
         Igi2SaveSession? saves = null,
-        IProjectIGILogger? logger = null)
+        IProjectIGILogger? logger = null,
+        GameConfig? sharedConfiguration = null)
     {
         ArgumentNullException.ThrowIfNull(config);
         ArgumentNullException.ThrowIfNull(missions);
         ArgumentNullException.ThrowIfNull(strings);
 
         _config = config;
+        _shared = sharedConfiguration;
         _missions = missions;
         _strings = strings;
         _saves = saves;
@@ -184,7 +192,12 @@ public sealed class Igi2ConfigNatives : IMenuConfiguration, IMenuMissionStats
                 return true;
 
             case "Config_PlayerGetActiveMission":
-                result = QvmValue.FromInt32(ActiveMissionOf(ProfileAt(arguments.GetInt32(0))));
+                // The active profile's answer is the merged frontier, so the list opens on the
+                // mission the game has reached — a completion writes the shared profile, and the
+                // sequel's own profile alone would still answer the mission before it.
+                int profileIndex = arguments.GetInt32(0);
+                result = QvmValue.FromInt32(
+                    profileIndex == _config.ActiveIndex ? ReachedMission() : ActiveMissionOf(ProfileAt(profileIndex)));
                 return true;
 
             case "Config_GetActivePlayerProfileIndex":
@@ -225,30 +238,31 @@ public sealed class Igi2ConfigNatives : IMenuConfiguration, IMenuMissionStats
         }
     }
 
-    /// <summary>Walks the campaign, one entry per mission, stopping after the one the profile has reached.</summary>
+    /// <summary>Walks the campaign, one entry per mission, marking the ones past the frontier locked.</summary>
     /// <remarks>
     /// Project I.G.I.'s <c>Config_FillMissionSelectionBox</c> (<c>0x405660</c>) walks the mission chain
     /// from the first id, adding each mission's name keyed by its id, and stops after the one the
-    /// profile has reached — which is what keeps a fresh profile from starting mission 14. The same
-    /// stop here, over <see cref="IMissionCatalogue{MissionDescriptor}.InProgressionOrder"/>: a
-    /// profile that has reached nothing (active mission zero) lists the whole campaign, since no
-    /// mission carries id zero.
+    /// profile has reached — which is what keeps a fresh profile from starting mission 14. The whole
+    /// campaign is listed here instead, with the ones past the frontier marked locked and unpickable,
+    /// which says the same thing in the open: the missions are there, and the game decides which may
+    /// be played. A profile that has reached nothing (active mission zero) counts as standing on the
+    /// first mission — without that the frontier is no mission at all, and the whole campaign lists
+    /// unlocked, which is how every mission came to be playable from a fresh install.
     /// </remarks>
     private IEnumerable<MenuListItem> GetMissions(int reached)
     {
-        bool unlockAll = PlayerCheatCVars.UnlockAllLevels.Value;
+        int frontier = IndexOf(reached);
+        int index = 0;
         foreach (MissionDescriptor mission in Chain())
         {
+            bool unlocked = PlayerCheatCVars.UnlockAllLevels.Value || index <= frontier;
             // The corrected name where one is listed, so the list and the stats box
             // never disagree about what a mission is called.
             string displayName = TryGetCorrectedText(mission.Id, out string correctedName, out _)
                 ? correctedName
                 : Localise(mission.Name);
-            yield return new MenuListItem(mission.Id, displayName);
-            if (!unlockAll && mission.Id == reached)
-            {
-                yield break;
-            }
+            yield return new MenuListItem(mission.Id, unlocked ? displayName : displayName + LockedSuffix, unlocked);
+            index++;
         }
     }
 
@@ -285,14 +299,71 @@ public sealed class Igi2ConfigNatives : IMenuConfiguration, IMenuMissionStats
     /// <summary>Resolves a descriptor's name key, which is a language key rather than text.</summary>
     private string Localise(string key) => _strings() is { } table ? table.Get(key) : key;
 
-    /// <summary>Gets the furthest mission the active profile has reached at its own difficulty.</summary>
-    private int ReachedMission() => ActiveMissionOf(_config.Active);
+    /// <summary>Gets the furthest mission the active profile has reached: the furthest of the sequel's own profile at its difficulty and the shared profile the mission-completion flow advances.</summary>
+    /// <remarks>
+    /// A completion writes the shared profile and never the sequel's own, so the sequel's profile
+    /// alone would still answer the mission before the one just finished — and the game would forget
+    /// the unlock on the next visit to the screen. The shared value only counts when it is a mission
+    /// of this campaign: a fresh shared profile carries Project I.G.I.'s numbering, which is no
+    /// mission of the sequel's.
+    /// </remarks>
+    private int ReachedMission()
+    {
+        int reached = ActiveMissionOf(_config.Active);
+        int shared = _shared?.Active?.ActiveMission ?? 0;
+        return IndexOf(shared) > IndexOf(reached) ? shared : reached;
+    }
 
-    /// <summary>Gets a profile's furthest mission at its own difficulty, or zero when there is none.</summary>
-    private static int ActiveMissionOf(Igi2PlayerProfile? profile) =>
-        profile is null || (uint)profile.Difficulty >= (uint)profile.ActiveMission.Length
+    /// <summary>Gets a mission's place in the campaign, or -1 when it is no mission of it.</summary>
+    private int IndexOf(int missionId)
+    {
+        int index = 0;
+        foreach (MissionDescriptor mission in Chain())
+        {
+            if (mission.Id == missionId)
+            {
+                return index;
+            }
+
+            index++;
+        }
+
+        return -1;
+    }
+
+    /// <summary>Gets the first mission of the campaign, or zero when the campaign holds none.</summary>
+    private int FirstMissionId()
+    {
+        foreach (MissionDescriptor mission in Chain())
+        {
+            return mission.Id;
+        }
+
+        return 0;
+    }
+
+    /// <summary>Gets whether a mission may be played: on or before the frontier, or every mission when the unlock-all cheat is on.</summary>
+    /// <remarks>A mission that is on no campaign of this title may not be played from this screen.</remarks>
+    public bool IsUnlocked(int missionId)
+    {
+        if (PlayerCheatCVars.UnlockAllLevels.Value)
+        {
+            return true;
+        }
+
+        int wanted = IndexOf(missionId);
+        int frontier = IndexOf(ReachedMission());
+        return wanted >= 0 && frontier >= 0 && wanted <= frontier;
+    }
+
+    /// <summary>Gets a profile's furthest mission at its own difficulty, or the first mission when it has reached none.</summary>
+    private int ActiveMissionOf(Igi2PlayerProfile? profile)
+    {
+        int reached = profile is null || (uint)profile.Difficulty >= (uint)profile.ActiveMission.Length
             ? 0
             : profile.ActiveMission[profile.Difficulty];
+        return IndexOf(reached) >= 0 ? reached : FirstMissionId();
+    }
 
     private Igi2PlayerProfile? ProfileAt(int index) =>
         index >= 0 && index < _config.Profiles.Count ? _config.Profiles[index] : null;
