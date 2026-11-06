@@ -255,7 +255,7 @@ JNIEXPORT jboolean JNICALL Java_com_projectigi2_app_NativeEngine_nativeStartGame
     int32_t setGeoRes = ANativeWindow_setBuffersGeometry(g_native_window, landscapeWidth, landscapeHeight, 0);
     LOGI("ANativeWindow_setBuffersGeometry(%dx%d) returned %d", landscapeWidth, landscapeHeight, setGeoRes);
 
-    std::string dataDir = filesDir + "/Project IGI";
+    std::string dataDir = filesDir + "/Project IGI 2";
 
 
     g_game_running.store(true);
