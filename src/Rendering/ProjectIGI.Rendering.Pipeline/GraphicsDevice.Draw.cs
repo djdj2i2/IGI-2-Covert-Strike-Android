@@ -333,6 +333,13 @@ public sealed partial class GraphicsDevice : ISdfTextDevice
     /// <inheritdoc/>
     public void SetSceneSun(Vector3f ambient, Vector3f colour)
     {
+        // The player's sun brightness: scales the authored sun before it reaches any
+        // pipeline, so the models (including the first-person rig) read brighter in
+        // dark areas. Applied here rather than at the call site so the deferred
+        // re-application reuses the same scaled values.
+        float brightness = LightingCVars.SunBrightness.Value;
+        ambient = ambient * brightness;
+        colour = colour * brightness;
         _sceneSunAmbient = ambient;
         _sceneSunColour = colour;
         _pipelines.SetSun(ambient, colour);
@@ -354,7 +361,9 @@ public sealed partial class GraphicsDevice : ISdfTextDevice
     public void ClearDetailFade() => _detailFade = DetailFade.None;
 
     /// <inheritdoc/>
-    public void SetLightmapScale(float scale) => _lightmapScale = scale;
+    // The player's sun brightness scales the baked world with the sun: a reset to one
+    // still leaves the brightness, so the terrain brightens with the rest of the scene.
+    public void SetLightmapScale(float scale) => _lightmapScale = scale * LightingCVars.SunBrightness.Value;
 
     /// <inheritdoc/>
     public void SetAlphaReference(byte reference) => _alphaReference = reference;

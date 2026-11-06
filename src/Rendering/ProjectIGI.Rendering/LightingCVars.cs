@@ -134,6 +134,29 @@ public static class LightingCVars
         // tone curve's toe. That is the "shadows read as a solid slab" report.
         ultra: "7");
 
+    /// <summary>How bright the level sun reads: the player's brightness knob for dark areas.</summary>
+    /// <remarks>
+    /// A multiplier on the authored sun, not a calibration: 1 is the level as its authors lit it, on
+    /// every preset. It scales the forward sun that lights the models (including the first-person rig)
+    /// and the lightmap scale the baked world is drawn with, so it brightens the whole scene on the
+    /// vanilla path, where the display gamma and the exposure never run because the frame goes straight
+    /// to the back buffer. It deliberately does not touch <see cref="SunScale"/>: that one calibrates
+    /// the dynamic model's sun against its sky and moves with its preset, while this one is the
+    /// player's own brightness and stays put.
+    /// </remarks>
+    public static readonly NumericCVar<float> SunBrightness = Presets.Define(
+        CVar.Float(
+            "r_sun_brightness",
+            1f,
+            0.5f,
+            3f,
+            CVarOptions.Archive,
+            "Sun brightness: scales the level sun and the world's bakes. Above 1 brightens dark areas."),
+        vanilla: "1",
+        enhanced: "1",
+        high: "1",
+        ultra: "1");
+
     /// <summary>The registry the renderer's own settings describe themselves to.</summary>
     private static GraphicsPresetRegistry Presets => GraphicsPresetRegistry.Default;
 }

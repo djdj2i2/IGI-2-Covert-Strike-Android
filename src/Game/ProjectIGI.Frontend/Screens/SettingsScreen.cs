@@ -35,6 +35,7 @@ public sealed class SettingsScreen : ShellScreen
     private readonly int _initialRenderScale;
     private readonly bool _initialShowFps;
     private readonly float _initialGamma;
+    private readonly float _initialSunBrightness;
 
     private ScrollView? _scroll;
     private UiVec2? _touchDragStart;
@@ -58,6 +59,7 @@ public sealed class SettingsScreen : ShellScreen
         _initialRenderScale = context.Host.RenderScaleMode;
         _initialShowFps = DisplayCVars.ShowFps.Value;
         _initialGamma = PostCVars.Gamma.Value;
+        _initialSunBrightness = LightingCVars.SunBrightness.Value;
     }
 
     /// <inheritdoc/>
@@ -237,6 +239,23 @@ public sealed class SettingsScreen : ShellScreen
         };
         configStack.AddChild(gammaSlider);
 
+        // ── Sun: how bright the level sun reads ─────────────────────────────
+        // Scales the authored sun that lights the models and the world's bakes.
+        // Above 100% dark areas read brighter; 100% is the level as authored.
+        // (The Gamma slider above is display gamma and never runs on the vanilla
+        // path Android uses, so this is the brightness knob that works there.)
+        float initialSun = LightingCVars.SunBrightness.Value;
+        var sunSlider = new Slider(theme, "Sun", 50f, 300f, (int)Math.Round(initialSun * 100f), 5f)
+        {
+            Width = 980f,
+            Height = 56f,
+        };
+        sunSlider.ValueChanged += value =>
+        {
+            LightingCVars.SunBrightness.Value = Math.Clamp(value / 100f, 0.5f, 3f);
+        };
+        configStack.AddChild(sunSlider);
+
         // ── Option 7: Invert Mouse / Look Pitch ───────────────────────────
         bool invertState = Context.Config.Active?.InvertMouse ?? false;
         var invertToggle = new Toggle(theme, "Invert Look / Mouse", invertState)
@@ -351,6 +370,7 @@ public sealed class SettingsScreen : ShellScreen
             LayoutContext.GlobalTextScale = _initialTextScale;
             DisplayCVars.ShowFps.Value = _initialShowFps;
             PostCVars.Gamma.Value = _initialGamma;
+            LightingCVars.SunBrightness.Value = _initialSunBrightness;
             if (Context.Config.Active is { } profile)
             {
                 profile.InvertMouse = _initialInvert;
