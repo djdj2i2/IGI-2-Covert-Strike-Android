@@ -21,7 +21,7 @@ public enum TouchControlMode
     /// <summary>A cutscene: a finger held anywhere skips it, which the host reads from the touches themselves.</summary>
     Cutscene,
 
-    /// <summary>The map computer: a finger is its pointer, and a button in the corner closes it.</summary>
+    /// <summary>The map computer: a finger is its pointer, zoom buttons and a navigation stick sit at the top centre, and a button in the corner closes it.</summary>
     Computer,
 
     /// <summary>Interactive HUD and touch layout customization mode.</summary>
@@ -167,6 +167,9 @@ public enum TouchButton
     /// <summary>The binoculars.</summary>
     Binoculars,
 
+    /// <summary>The binoculars as the green night-vision goggles (I.G.I. 2): the same B key as the binoculars, its own button.</summary>
+    NightVision,
+
     /// <summary>Zoom in, through the binoculars or a sight.</summary>
     ZoomIn,
 
@@ -308,6 +311,12 @@ public sealed class TouchControls
 
     /// <summary>Gets the stick's reach in back-buffer pixels.</summary>
     public float StickReachPixels { get; private set; }
+
+    /// <summary>Gets where the map computer's navigation stick rests, at the top centre of the screen.</summary>
+    public UiVec2 ComputerStickRest { get; private set; }
+
+    /// <summary>Gets the map computer's navigation stick's reach in back-buffer pixels.</summary>
+    public float ComputerStickReachPixels { get; private set; }
 
     /// <summary>Gets how far the view is to turn this frame.</summary>
     public UiVec2 Look { get; private set; }
@@ -480,10 +489,13 @@ public sealed class TouchControls
             switch (role.Kind)
             {
                 case RoleKind.Stick:
-                    UiVec2 origin = new(point.StartX, point.StartY);
+                    // The map computer's stick is fixed at the top centre: its thumb starts from there,
+                    // not from where the finger came down, so the knob tracks the visible base.
+                    bool computerStick = mode == TouchControlMode.Computer;
+                    UiVec2 origin = computerStick ? ComputerStickRest : new(point.StartX, point.StartY);
                     float dx = point.X - origin.X, dy = point.Y - origin.Y;
                     float length = MathF.Sqrt((dx * dx) + (dy * dy));
-                    float reach = StickReachPixels / Math.Clamp(TouchSensitivity, 0.5f, 2.0f);
+                    float reach = (computerStick ? ComputerStickReachPixels : StickReachPixels) / Math.Clamp(TouchSensitivity, 0.5f, 2.0f);
                     float scale = length > reach ? reach / length : 1f;
                     stick = new UiVec2(dx * scale / reach, dy * scale / reach);
                     stickOrigin = origin;
@@ -678,6 +690,14 @@ public sealed class TouchControls
     {
         if (mode == TouchControlMode.Computer)
         {
+            // The navigation stick is fixed at the top centre: a finger coming down on it steers
+            // the map, and does not become the pointer — the pointer is a second finger.
+            float sdx = point.StartX - ComputerStickRest.X, sdy = point.StartY - ComputerStickRest.Y;
+            if ((sdx * sdx) + (sdy * sdy) <= (ComputerStickReachPixels * 1.5f) * (ComputerStickReachPixels * 1.5f))
+            {
+                return new Role(RoleKind.Stick, null);
+            }
+
             if (Nearest(point.StartX, point.StartY, _computerLayout) is { } computerSpot)
             {
                 return new Role(RoleKind.Button, computerSpot.Button);
@@ -845,13 +865,21 @@ public sealed class TouchControls
         _computerLayout.Clear();
         _computerLayout.Add(new TouchButtonSpot(TouchButton.Close, new UiVec2(safe.Right - Px(90f), safe.Y + Px(90f)), Px(ButtonRadius)));
 
+        // The map computer's own controls, at the very top centre, only while it is open:
+        // zoom out and in flanking a fixed navigation stick, which pans the map. The stick is
+        // a little smaller than the movement stick; the zoom buttons sit clear of its reach.
+        ComputerStickRest = new UiVec2(safe.X + (safe.Width * 0.5f), safe.Y + Px(110f));
+        ComputerStickReachPixels = Px(110f);
+        _computerLayout.Add(new TouchButtonSpot(TouchButton.ZoomOut, new UiVec2(ComputerStickRest.X - Px(300f), ComputerStickRest.Y), Px(CornerRadius), ElementId: TouchElementId.ZoomOut));
+        _computerLayout.Add(new TouchButtonSpot(TouchButton.ZoomIn, new UiVec2(ComputerStickRest.X + Px(300f), ComputerStickRest.Y), Px(CornerRadius), ElementId: TouchElementId.ZoomIn));
+
         // Corner utility
         float y = safe.Y + Px(80f);
         TouchElementId[] cornerIds = ShowIgi2Buttons
             ? [TouchElementId.Pause, TouchElementId.Map, TouchElementId.Binoculars, TouchElementId.WalkRun]
             : [TouchElementId.Pause, TouchElementId.Map, TouchElementId.Binoculars];
         TouchButton[] cornerBtns = ShowIgi2Buttons
-            ? [TouchButton.Pause, TouchButton.Map, TouchButton.Binoculars, TouchButton.WalkRun]
+            ? [TouchButton.Pause, TouchButton.Map, TouchButton.NightVision, TouchButton.WalkRun]
             : [TouchButton.Pause, TouchButton.Map, TouchButton.Binoculars];
         for (int i = 0; i < cornerBtns.Length; i++)
         {

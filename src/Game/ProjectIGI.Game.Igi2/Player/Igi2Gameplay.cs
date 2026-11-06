@@ -174,6 +174,19 @@ public sealed class Igi2Gameplay : ITitleGameplay
                 player.Human.Pickups.Dynamic = player.Dynamic;
                 player.Human.Pickups.Random = player.Human.Random;
                 player.Human.Pickups.PlaySound = (name, at) => sounds.New(name, at);
+
+                // The player's surroundings were made bare in Spawn (no pickups, models or materials),
+                // while a soldier's is wired to the level's lists: a thrown weapon then found no pickup
+                // list to join and was only removed from the inventory — dropped, and gone. Hand the
+                // player the same lists, so a drop lands on the ground as a pickup and can be walked
+                // over and taken back. Materials rides along for the same reason: the player's own
+                // footsteps and bullet effects ask the surroundings for the footing's material.
+                if (player.Human.Surroundings is Igi2LevelSurroundings surroundings)
+                {
+                    surroundings.Pickups = player.Human.Pickups;
+                    surroundings.Models = models;
+                    surroundings.Materials = materials;
+                }
             }
         }
 
