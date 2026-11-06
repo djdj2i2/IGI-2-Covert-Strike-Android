@@ -20,8 +20,8 @@ namespace ProjectIGI.Game.Igi2.Flow;
 /// <para>
 /// The root is the <c>Level</c> (<c>Level_LevelRunHandler</c>, <c>0x543400</c>), which runs its children and then counts
 /// the tick. Its <c>Static</c> child does nothing (<c>Level_StaticRunHandler</c>, <c>0x5434A0</c>); its <c>Dynamic</c> child
-/// (<c>Level_DynamicRunHandler</c>, <c>0x5435F0</c>) runs the level's own objects, then what has been added after them —
-/// grenades, explosions and what they leave (<see cref="ProjectIGI.Game.World.DynamicTasks"/>) — then the delayed pass
+/// (<c>Level_DynamicRunHandler</c>, <c>0x5435F0</c>) runs the level's own objects, then what has been added after them â€”
+/// grenades, explosions and what they leave (<see cref="ProjectIGI.Game.World.DynamicTasks"/>) â€” then the delayed pass
 /// (<c>RunDelayed_Run</c>, <c>0x58FDB0</c>).
 /// </para>
 /// <para>
@@ -36,6 +36,15 @@ public sealed class Igi2LevelRun : LevelRun, IConditionalContainerRules
 
     // A conditional container's scripts, each compiled the first time it runs.
     private readonly Dictionary<(GameTask Owner, string Source), LevelExpression> _containerScripts = [];
+
+    /// <summary>Gets or sets the monotonic wall clock the level's time-based tasks read, in milliseconds.</summary>
+    /// <remarks>
+    /// The simulation's own clock (<see cref="LevelRun.TimeMilliseconds"/>) advances a fixed 33 ms a tick, so it
+    /// falls behind wall time whenever a tick is dropped; a task that must play at its authored speed in wall
+    /// time -- a cutscene's camera, a lift -- reads this instead. It defaults to the process's monotonic clock
+    /// and is a function so a test can hold it still; the host never sets it.
+    /// </remarks>
+    public Func<long> WallClockMilliseconds { get; set; } = static () => Environment.TickCount64;
 
     /// <summary>Initializes a new instance of the <see cref="Igi2LevelRun"/> class.</summary>
     /// <param name="root">The level's root task.</param>

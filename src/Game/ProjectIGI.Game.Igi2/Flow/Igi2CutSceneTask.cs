@@ -64,6 +64,16 @@ public sealed partial class Igi2CutSceneTask : Igi2Task
     private Vector3d _previousPosition;
     private bool _isBandFilter;
 
+    // The most ticks the wall-clock advance moves the clock in one run: half a second. A longer stall is
+    // caught up over the runs that follow rather than in a single jump of the camera.
+    private const int MaxClockAdvancePerRun = 15;
+
+    // Where the wall-clock advance is anchored: the clock and the wall reading the tick the cutscene
+    // started running, so the clock is the anchor plus the wall time since, at thirty ticks a second.
+    private int _clockAnchorTick;
+    private long _clockAnchorWallMs;
+    private bool _clockAnchored;
+
     /// <summary>Gets or sets where the editor shows it.</summary>
     [ScriptParam(ScriptParamType.ObjectPos, "Position")]
     public Vector3d Position { get; set; }
@@ -169,6 +179,7 @@ public sealed partial class Igi2CutSceneTask : Igi2Task
         {
             Tick = 0;
             _isFinished = 0;
+            _clockAnchored = false;
         }
 
         if (IsRun)
@@ -179,10 +190,14 @@ public sealed partial class Igi2CutSceneTask : Igi2Task
                 double seconds = level.Evaluate(_forward);
                 Tick = Math.Max(0, Tick + (int)LevelExpression.Truncate(seconds * Igi2LevelRun.Frequency));
             }
-            else
+            else if (_isFinished == 0)
             {
-                Tick++;
+                AdvanceClock(level);
             }
+        }
+        else
+        {
+            _clockAnchored = false;
         }
 
         if (!_wasRun && IsRun && !_start!.IsEmpty)
@@ -210,10 +225,33 @@ public sealed partial class Igi2CutSceneTask : Igi2Task
         ArgumentNullException.ThrowIfNull(variables);
         variables.BindInt(this, "isRun", () => _isRun, value => _isRun = (byte)value, sizeof(byte));
         variables.BindInt(this, "isFinished", () => _isFinished, value => _isFinished = (byte)value, sizeof(byte));
-        variables.BindInt(this, "nTick", () => Tick, value => Tick = value);
+        variables.BindInt(this, "nTick", () => Tick, value => { Tick = value; _clockAnchored = false; });
     }
 
     private static Igi2EditCameraTask? FirstCamera(GameTask task) => task.Children.OfType<Igi2EditCameraTask>().FirstOrDefault();
+
+    /// <summary>
+    /// Advances the clock by the wall time since it last ran, at thirty ticks a second: the cutscene plays at its
+    /// authored speed however many ticks the host dropped, and a tick that ran on time still advances it by one.
+    /// The clock is anchored where the cutscene started running, and moves toward that anchor by at most half a
+    /// second a run, so a long stall is caught up over the runs that follow rather than in one jump -- and a
+    /// cutscene that played to its end holds its clock there, as before.
+    /// </summary>
+    private void AdvanceClock(Igi2LevelRun level)
+    {
+        ArgumentNullException.ThrowIfNull(level);
+        long now = level.WallClockMilliseconds();
+        if (!_clockAnchored)
+        {
+            _clockAnchorTick = Tick;
+            _clockAnchorWallMs = now;
+            _clockAnchored = true;
+        }
+
+        long target = _clockAnchorTick + ((now - _clockAnchorWallMs) * Igi2LevelRun.Frequency) / 1000;
+        int advance = (int)Math.Clamp(target - Tick, 1, MaxClockAdvancePerRun);
+        Tick += advance;
+    }
 
     // CutScene_RegisterCutSceneCamera (igi2 0x438D50): a camera, then the cameras under it, then its next sibling camera.
     private void Register(List<(Igi2EditCameraTask, float)> cameras, Igi2EditCameraTask first, ref Fpu total)

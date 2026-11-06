@@ -43,6 +43,10 @@ public sealed partial class Igi2LiftTask : Igi2Task, IIgi2PlacedTask, IIgi2Mover
     // One thirtieth, the float 0x3D088889: a speed in metres a second, made units a tick.
     private const float PerTick = 0.033333335f;
 
+    // The most ticks' worth of travel one run applies: half a second. A longer stall is caught up over the
+    // runs that follow rather than in a single jump of the lift.
+    private const int MaxMoveStepsPerRun = 15;
+
     private float[] _startOrientation = EngineEuler.Rotation(0f, 0f, 0f);
     private float[] _stopOrientation = EngineEuler.Rotation(0f, 0f, 0f);
     private float[] _orientation = EngineEuler.Rotation(0f, 0f, 0f);
@@ -64,6 +68,10 @@ public sealed partial class Igi2LiftTask : Igi2Task, IIgi2PlacedTask, IIgi2Mover
     private byte _isLastCanStart = 1;
     private Vector3f _delta;
     private int _runTick = -1;
+
+    // The wall reading the lift last moved on, or -1 before its first move: the lift's step is the wall time
+    // since, so it travels at its authored speed however many ticks the host dropped.
+    private long _lastMoveWallMs = -1;
     private LevelExpression? _floorUp;
     private LevelExpression? _floorDown;
     private LevelExpression? _canStart;
@@ -194,6 +202,11 @@ public sealed partial class Igi2LiftTask : Igi2Task, IIgi2PlacedTask, IIgi2Mover
         }
 
         _runTick = level.Ticks;
+        long wallNow = level.WallClockMilliseconds();
+        int steps = _lastMoveWallMs < 0
+            ? 1
+            : (int)Math.Clamp(((wallNow - _lastMoveWallMs) * Igi2LevelRun.Frequency) / 1000, 1L, MaxMoveStepsPerRun);
+        _lastMoveWallMs = wallNow;
         Start(level);
         level.RunChildren(this);
 
@@ -244,7 +257,7 @@ public sealed partial class Igi2LiftTask : Igi2Task, IIgi2PlacedTask, IIgi2Mover
         _isMovingLastFrame = _isMoving;
         if (canStart != 0)
         {
-            _isMoving = Move() ? (byte)1 : (byte)0;
+            _isMoving = Move(steps) ? (byte)1 : (byte)0;
             if (_isMoving == 0)
             {
                 _currentFloor = _floorCache;
@@ -374,34 +387,41 @@ public sealed partial class Igi2LiftTask : Igi2Task, IIgi2PlacedTask, IIgi2Mover
 
     // Lift_Move (igi2 0x46DBA0): the top speed as a share of the way a tick, eased toward by the inertia; within the last tenth
     // of the way the speed is what is left of it times ten tops, no less than a thousandth. Along is never past one.
-    private bool Move()
+    // <paramref name="steps"/> is how many ticks' worth of travel this run applies: one when the host kept up, more
+    // after a stall, so the lift travels at its authored speed in wall time -- the easing is stepped once a tick's
+    // worth, exactly as that many ticks would have, and the position is reposed once at the end.
+    private bool Move(int steps)
     {
         float old = _along;
         float dx = ((Fpu)_stopPosition.X - _startPosition.X).F;
         float dy = ((Fpu)_stopPosition.Y - _startPosition.Y).F;
         Fpu dz = (Fpu)_stopPosition.Z - _startPosition.Z;
-        float left = ((Fpu)1f - _along).F;
         Fpu top = ((Fpu)MaxSpeed * 4096f) * PerTick;
         Fpu step = top / Fpu.Sqrt((((Fpu)dx * dx) + ((Fpu)dy * dy)) + (dz * dz));
-        float share = left < 0f ? -left : left;
-        if (share < SlowingShare)
+        for (int i = 0; i < steps; i++)
         {
-            Fpu slowing = (step * share) * 10f;
-            _speed = slowing.Value > LeastSpeed ? slowing.F : LeastSpeed;
-        }
-        else if (step.Value > _speed)
-        {
-            Fpu faster = (Fpu)SpeedInertia + _speed;
-            _speed = faster.Value <= step.Value ? faster.F : step.F;
-        }
-        else if (step.Value < _speed)
-        {
-            Fpu slower = (Fpu)_speed - SpeedInertia;
-            _speed = slower.Value >= step.Value ? slower.F : step.F;
+            float left = ((Fpu)1f - _along).F;
+            float share = left < 0f ? -left : left;
+            if (share < SlowingShare)
+            {
+                Fpu slowing = (step * share) * 10f;
+                _speed = slowing.Value > LeastSpeed ? slowing.F : LeastSpeed;
+            }
+            else if (step.Value > _speed)
+            {
+                Fpu faster = (Fpu)SpeedInertia + _speed;
+                _speed = faster.Value <= step.Value ? faster.F : step.F;
+            }
+            else if (step.Value < _speed)
+            {
+                Fpu slower = (Fpu)_speed - SpeedInertia;
+                _speed = slower.Value >= step.Value ? slower.F : step.F;
+            }
+
+            Fpu along = (Fpu)_speed + _along;
+            _along = along.Value < 1.0 ? along.F : 1f;
         }
 
-        Fpu along = (Fpu)_speed + _along;
-        _along = along.Value < 1.0 ? along.F : 1f;
         UpdatePosition();
         UpdateAttachments();
         return _along != old;
