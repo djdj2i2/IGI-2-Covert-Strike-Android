@@ -198,9 +198,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         splashLayout = new FrameLayout(this);
         splashLayout.setBackgroundColor(Color.rgb(8, 10, 18)); // #0a0c08
 
-        // 1. Background image (img.png)
+        // 1. Background image (igi2-loading.png — Ray's I.G.I. 2 art; the old IGI 1 img.png splash is gone)
         Bitmap bmp = null;
-        for (String bgPath : new String[]{"img.png", "public/img.png", "public/boot-bg.png", "boot-bg.png"}) {
+        for (String bgPath : new String[]{"public/Assets/menu_images/igi2-loading.png"}) {
             try (InputStream is = getAssets().open(bgPath)) {
                 bmp = BitmapFactory.decodeStream(is);
                 if (bmp != null) {
@@ -456,11 +456,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 File managedAssetsDir = new File(managedDir, "Assets");
                 copyAssetFolder(getAssets(), "public/Assets", managedAssetsDir);
 
-                // Copy img.png and libopenal.so (the mission loading art now comes from the
-                // retail game data, not the old bundled loading.png / boot-bg.png)
-                File[] imgDirs = new File[]{filesDir, assetsDir, managedDir, managedAssetsDir};
-                for (File d : imgDirs) {
-                    copySingleAssetSafe("img.png", new File(d, "img.png"));
+                // Copy libopenal.so (the old bundled img.png splash is gone; the loading art now
+                // ships under public/Assets/menu_images and is copied fresh on every launch below)
+                File[] libDirs = new File[]{filesDir, assetsDir, managedDir, managedAssetsDir};
+                for (File d : libDirs) {
                     copySingleAssetSafe("managed/libopenal.so", new File(d, "libopenal.so"));
                 }
 
@@ -488,6 +487,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 Log.w(TAG, "Managed sync error", e);
             }
         }
+
+        // The loading art ships in the APK and is read out of the files directory by the
+        // managed host; copy it on every launch so an update over an existing install
+        // refreshes it too — the Assets folder itself is only extracted on first install.
+        copySingleAssetSafe(
+            "public/Assets/menu_images/igi2-loading.png",
+            new File(new File(filesDir, "Assets"), "menu_images/igi2-loading.png"));
 
         isExtracted = true;
 
