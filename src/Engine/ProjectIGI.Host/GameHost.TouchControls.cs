@@ -30,16 +30,40 @@ public sealed partial class GameHost
     private bool _crouchToggled;
     private bool _crouchHeldPrev;
 
+    /// <summary>The action the crouch button holds: the running title's own crouch where it replaces the shared one (I.G.I. 2), else the shared action. The shared crouch bit is stripped for a replacing title, so sending the shared name would silently do nothing — the old button only worked because the title's alternate row happened to share the same key.</summary>
+    private string CrouchAction()
+    {
+        if (Gameplay?.InputBindings is { } bindings)
+        {
+            foreach (TitleInputBinding binding in bindings)
+            {
+                if (binding.Replaces == PlayerAction.Crouch)
+                {
+                    return binding.Default.Action;
+                }
+            }
+        }
+
+        return "Crouch";
+    }
+
     /// <summary>The action each button holds, as the profile names it.</summary>
-    private static string? TouchAction(TouchButton button) => button switch
+    private string? TouchAction(TouchButton button) => button switch
     {
         TouchButton.Fire => "Fire",
         TouchButton.Scope => "AlternateFire",
         TouchButton.Reload => "Reload",
         TouchButton.Jump => "Jump",
-        TouchButton.Crouch => "Crouch",
+        TouchButton.Crouch => CrouchAction(),
         TouchButton.LowerStance => "Title_igi2_LowerStance",
         TouchButton.RaiseStance => "Title_igi2_RaiseStance",
+        TouchButton.WalkRun => "Title_igi2_ToggleWalkRun",
+        TouchButton.Prone => "Title_igi2_ToggleStandLie",
+        TouchButton.PrevWeapon => "PrevWeapon",
+        TouchButton.WeaponWheel => "WeaponWheel",
+        TouchButton.DropWeapon => "Title_igi2_DropWeapon",
+        TouchButton.Thermal => "Title_igi2_Thermal",
+        TouchButton.WalkHold => "Title_igi2_ModifyWalkRun",
         TouchButton.Use => "Activate",
         TouchButton.Weapon => "NextWeapon",
         TouchButton.Peek => "Peek",
@@ -85,6 +109,10 @@ public sealed partial class GameHost
         }
 
         TouchControlMode mode = CurrentTouchMode();
+        // I.G.I. 2's own buttons only exist when the running title defines them; under
+        // any other title they stay out of the layout instead of sitting there dead.
+        // The layout re-runs when this flips, so a title change mid-session is picked up.
+        _touchControls.ShowIgi2Buttons = Gameplay?.InputBindings.Any(b => b.Default.Action.StartsWith("Title_igi2_", StringComparison.OrdinalIgnoreCase)) == true;
         _touchControls.Update(input.Touch, mode, new LayoutContext(_window.Width, _window.Height));
 
         // Leaving play clears the crouch toggle, so the player does not come back
@@ -128,7 +156,7 @@ public sealed partial class GameHost
             _crouchHeldPrev = crouchHeld;
             if (_crouchToggled)
             {
-                Want(profile, "Crouch");
+                Want(profile, CrouchAction());
             }
 
             foreach (TouchButton button in _touchControls.Held)
@@ -293,18 +321,50 @@ public sealed partial class GameHost
 
     private void Want(PlayerProfile? profile, string action)
     {
-        if (!PlayerProfileInputBindings.TryBoundControl(profile, action, out KeyCode key, out MouseButton? button))
+        if (PlayerProfileInputBindings.TryBoundControl(profile, action, out KeyCode key, out MouseButton? button))
         {
+            if (button is { } mouse)
+            {
+                _touchButtonsWanted.Add(mouse);
+            }
+            else
+            {
+                _touchKeysWanted.Add(key);
+            }
+
             return;
         }
 
-        if (button is { } mouse)
+        // A title action whose saved row is unbound still works from the title's own
+        // default key. RestoreMissing only adds rows that are missing entirely, so a
+        // profile saved before a default key existed keeps the old unbound row — the
+        // prone button would be dead on it until a controls reset. This is the same
+        // repair the shared bindings get on load (RestoreMissingDefaultBindings), just
+        // for title actions, and only for touch: a key the player deliberately unbound
+        // cannot happen here, as there is no rebind UI. The proper fix is to repair
+        // the row itself in RestoreMissing; until then this keeps new buttons live.
+        if (Gameplay?.InputBindings is { } bindings)
         {
-            _touchButtonsWanted.Add(mouse);
-        }
-        else
-        {
-            _touchKeysWanted.Add(key);
+            foreach (TitleInputBinding binding in bindings)
+            {
+                if (!string.Equals(binding.Default.Action, action, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (string.Equals(binding.Default.Device, InputBindingKeyNames.KeyboardDevice, StringComparison.OrdinalIgnoreCase)
+                    && InputBindingKeyNames.TryParseKeyboardKey(binding.Default.Key, out KeyCode fallbackKey))
+                {
+                    _touchKeysWanted.Add(fallbackKey);
+                }
+                else if (string.Equals(binding.Default.Device, InputBindingKeyNames.MouseDevice, StringComparison.OrdinalIgnoreCase)
+                    && InputBindingKeyNames.TryParseMouseButton(binding.Default.Key, out MouseButton fallbackButton))
+                {
+                    _touchButtonsWanted.Add(fallbackButton);
+                }
+
+                return;
+            }
         }
     }
 

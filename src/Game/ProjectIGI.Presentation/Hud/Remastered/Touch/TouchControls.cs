@@ -58,6 +58,27 @@ public enum TouchElementId
     /// <summary>Step the stance up (I.G.I. 2).</summary>
     StanceUp,
 
+    /// <summary>Toggle walk/run (I.G.I. 2).</summary>
+    WalkRun,
+
+    /// <summary>Toggle stand/prone (I.G.I. 2).</summary>
+    Prone,
+
+    /// <summary>Previous weapon.</summary>
+    PrevWeapon,
+
+    /// <summary>Hold the weapon wheel open.</summary>
+    WeaponWheel,
+
+    /// <summary>Drop the held weapon (I.G.I. 2).</summary>
+    DropWeapon,
+
+    /// <summary>Raise the thermal sight (I.G.I. 2).</summary>
+    Thermal,
+
+    /// <summary>Hold to walk (I.G.I. 2).</summary>
+    WalkHold,
+
     /// <summary>Lean / peek button.</summary>
     Peek,
 
@@ -106,6 +127,27 @@ public enum TouchButton
 
     /// <summary>Step the stance up: prone to crouch, crouch to stand (I.G.I. 2).</summary>
     RaiseStance,
+
+    /// <summary>Toggle walk/run (I.G.I. 2).</summary>
+    WalkRun,
+
+    /// <summary>Toggle stand/prone (I.G.I. 2).</summary>
+    Prone,
+
+    /// <summary>The previous weapon.</summary>
+    PrevWeapon,
+
+    /// <summary>Hold the weapon wheel open to pick a weapon.</summary>
+    WeaponWheel,
+
+    /// <summary>Drop the held weapon (I.G.I. 2).</summary>
+    DropWeapon,
+
+    /// <summary>Raise the thermal sight (I.G.I. 2).</summary>
+    Thermal,
+
+    /// <summary>Hold to walk instead of run (I.G.I. 2).</summary>
+    WalkHold,
 
     /// <summary>Use: a door, a ladder, a switch.</summary>
     Use,
@@ -225,11 +267,15 @@ public sealed class TouchControls
     /// <summary>Gets or sets the general touch sensitivity multiplier for swipe look and stick movement (from 0.2 to 3.0, default 1.0).</summary>
     public static float TouchSensitivity { get; set; } = 1.0f;
 
+    /// <summary>Gets or sets whether the I.G.I. 2-only buttons (stance, prone, walk/run, hold-to-walk, drop, thermal) are laid out at all. The host sets it from the running title; under a title that defines none of them they stay out of the layout entirely instead of sitting there dead.</summary>
+    public bool ShowIgi2Buttons { get; set; } = true;
+
     private readonly Dictionary<int, Role> _roles = [];
     private readonly List<TouchButtonSpot> _layout = [];
     private readonly List<TouchButtonSpot> _computerLayout = [];
     private readonly HashSet<TouchButton> _held = [];
     private (float Width, float Height) _laidOutFor;
+    private bool _laidOutIgi2;
     private TouchControlMode _mode;
     private UiVec2 _lastLook;
 
@@ -373,7 +419,7 @@ public sealed class TouchControls
         ArgumentNullException.ThrowIfNull(touch);
         ArgumentNullException.ThrowIfNull(context);
 
-        if ((context.Viewport.X, context.Viewport.Y) != _laidOutFor)
+        if ((context.Viewport.X, context.Viewport.Y) != _laidOutFor || _laidOutIgi2 != ShowIgi2Buttons)
         {
             LayOut(context);
         }
@@ -684,6 +730,7 @@ public sealed class TouchControls
     {
         EnsureLoaded();
         _laidOutFor = (context.Viewport.X, context.Viewport.Y);
+        _laidOutIgi2 = ShowIgi2Buttons;
         _layout.Clear();
         UiRect safe = context.SafeRect;
         // Touch buttons keep a fixed physical size: they must NOT grow or shrink with the
@@ -734,8 +781,15 @@ public sealed class TouchControls
 
         // I.G.I. 2 stance buttons: a stack to the right of the movement stick,
         // clear of its reach and of FireLeft. Tap to step the stance one level.
-        _layout.Add(new TouchButtonSpot(TouchButton.RaiseStance, ResolvePos(TouchElementId.StanceUp, new UiVec2(safe.X + Px(480f), safe.Bottom - Px(400f))), Px(SmallRadius) * Scale(TouchElementId.StanceUp), ElementId: TouchElementId.StanceUp));
-        _layout.Add(new TouchButtonSpot(TouchButton.LowerStance, ResolvePos(TouchElementId.StanceDown, new UiVec2(safe.X + Px(480f), safe.Bottom - Px(280f))), Px(SmallRadius) * Scale(TouchElementId.StanceDown), ElementId: TouchElementId.StanceDown));
+        // Prone tops the stack, hold-to-walk sits below it; the whole column is
+        // I.G.I. 2 only and stays out of the layout under any other title.
+        if (ShowIgi2Buttons)
+        {
+            _layout.Add(new TouchButtonSpot(TouchButton.RaiseStance, ResolvePos(TouchElementId.StanceUp, new UiVec2(safe.X + Px(480f), safe.Bottom - Px(400f))), Px(SmallRadius) * Scale(TouchElementId.StanceUp), ElementId: TouchElementId.StanceUp));
+            _layout.Add(new TouchButtonSpot(TouchButton.LowerStance, ResolvePos(TouchElementId.StanceDown, new UiVec2(safe.X + Px(480f), safe.Bottom - Px(280f))), Px(SmallRadius) * Scale(TouchElementId.StanceDown), ElementId: TouchElementId.StanceDown));
+            _layout.Add(new TouchButtonSpot(TouchButton.Prone, ResolvePos(TouchElementId.Prone, new UiVec2(safe.X + Px(480f), safe.Bottom - Px(160f))), Px(SmallRadius) * Scale(TouchElementId.Prone), ElementId: TouchElementId.Prone));
+            _layout.Add(new TouchButtonSpot(TouchButton.WalkHold, ResolvePos(TouchElementId.WalkHold, new UiVec2(safe.X + Px(480f), safe.Bottom - Px(520f))), Px(SmallRadius) * Scale(TouchElementId.WalkHold), ElementId: TouchElementId.WalkHold));
+        }
 
         // Left fire
         UiVec2 defLeftFire = new(safe.X + Px(250f), safe.Bottom - Px(540f));
@@ -748,14 +802,34 @@ public sealed class TouchControls
         _layout.Add(new TouchButtonSpot(TouchButton.Weapon, ResolvePos(TouchElementId.WeaponCard, defWeapon), Px(ButtonRadius) * Scale(TouchElementId.WeaponCard), ElementId: TouchElementId.WeaponCard));
         _layout.Add(new TouchButtonSpot(TouchButton.Use, ResolvePos(TouchElementId.Use, defUse), Px(SmallRadius) * Scale(TouchElementId.Use), ElementId: TouchElementId.Use));
 
+        // Weapon selection around the weapon button: previous weapon above it, the wheel
+        // and drop to either side. Previous and wheel are shared actions, so they stay
+        // under every title; dropping is I.G.I. 2's own action.
+        _layout.Add(new TouchButtonSpot(TouchButton.PrevWeapon, ResolvePos(TouchElementId.PrevWeapon, new UiVec2(safe.X + (safe.Width * 0.5f), safe.Bottom - Px(410f))), Px(SmallRadius) * Scale(TouchElementId.PrevWeapon), ElementId: TouchElementId.PrevWeapon));
+        _layout.Add(new TouchButtonSpot(TouchButton.WeaponWheel, ResolvePos(TouchElementId.WeaponWheel, new UiVec2(safe.X + (safe.Width * 0.5f) - Px(170f), safe.Bottom - Px(90f))), Px(SmallRadius) * Scale(TouchElementId.WeaponWheel), ElementId: TouchElementId.WeaponWheel));
+        if (ShowIgi2Buttons)
+        {
+            _layout.Add(new TouchButtonSpot(TouchButton.DropWeapon, ResolvePos(TouchElementId.DropWeapon, new UiVec2(safe.X + (safe.Width * 0.5f) + Px(170f), safe.Bottom - Px(90f))), Px(SmallRadius) * Scale(TouchElementId.DropWeapon), ElementId: TouchElementId.DropWeapon));
+        }
+
+        // Thermal sight, on the right above the scope button (I.G.I. 2 only).
+        if (ShowIgi2Buttons)
+        {
+            _layout.Add(new TouchButtonSpot(TouchButton.Thermal, ResolvePos(TouchElementId.Thermal, new UiVec2(safe.Right - Px(470f), safe.Bottom - Px(540f))), Px(SmallRadius) * Scale(TouchElementId.Thermal), ElementId: TouchElementId.Thermal));
+        }
+
         // Computer close
         _computerLayout.Clear();
         _computerLayout.Add(new TouchButtonSpot(TouchButton.Close, new UiVec2(safe.Right - Px(90f), safe.Y + Px(90f)), Px(ButtonRadius)));
 
         // Corner utility
         float y = safe.Y + Px(80f);
-        TouchElementId[] cornerIds = [TouchElementId.Pause, TouchElementId.Map, TouchElementId.Binoculars];
-        TouchButton[] cornerBtns = [TouchButton.Pause, TouchButton.Map, TouchButton.Binoculars];
+        TouchElementId[] cornerIds = ShowIgi2Buttons
+            ? [TouchElementId.Pause, TouchElementId.Map, TouchElementId.Binoculars, TouchElementId.WalkRun]
+            : [TouchElementId.Pause, TouchElementId.Map, TouchElementId.Binoculars];
+        TouchButton[] cornerBtns = ShowIgi2Buttons
+            ? [TouchButton.Pause, TouchButton.Map, TouchButton.Binoculars, TouchButton.WalkRun]
+            : [TouchButton.Pause, TouchButton.Map, TouchButton.Binoculars];
         for (int i = 0; i < cornerBtns.Length; i++)
         {
             UiVec2 defCorner = new(safe.Right - Px(80f) - (i * Px(CornerRadius * 2.6f)), y);
