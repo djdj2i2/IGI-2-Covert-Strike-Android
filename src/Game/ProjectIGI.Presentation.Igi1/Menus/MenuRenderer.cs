@@ -133,6 +133,22 @@ public sealed class MenuRenderer : IDisposable
     /// <remarks><c>MenuManager_LoadScreen</c> (<c>0x417CF0</c>) names it literally.</remarks>
     public const string PointerSprite = "pointer.spr";
 
+    /// <summary>The glow sprite drawn behind a lit entry.</summary>
+    /// <remarks>
+    /// <c>glow.spr</c> in the menu's own archive: a soft white radial glow, 72 by 98, tinted by the
+    /// caller. <c>MenuText_Render</c> draws it behind a lit entry; the shared renderer drew none, so
+    /// in I.G.I. 2's pale table the selection was only a slightly brighter entry — nearly invisible.
+    /// </remarks>
+    private const string SelectionGlowSprite = "glow.spr";
+
+    /// <summary>The tint the selection glow draws in.</summary>
+    /// <remarks>
+    /// The sprite is white, so the tint is the colour: I.G.I. 2's blue accent, the same
+    /// (80, 160, 255) the app's blue restyle uses. The sprite's own soft alpha shapes the halo;
+    /// the tint stays opaque.
+    /// </remarks>
+    private static readonly Bgra32 SelectionGlowTint = Bgra32.FromRgb(80, 160, 255);
+
     /// <summary>Draws the mouse cursor.</summary>
     /// <param name="batch">The batch to draw into.</param>
     /// <param name="x">The horizontal position in authored space.</param>
@@ -464,7 +480,30 @@ public sealed class MenuRenderer : IDisposable
         // and the keyboard both move — not the pointer-over state.
         Bgra32 colour = MenuLayout.ToPixel(MenuLayout.GetColour(Style.ColourTable, text.ColourIndex, text.IsHighlighted));
 
+        // The glow behind a lit entry: drawn before the text, stretched over it with a little air
+        // around it so the halo reads. Only when the style draws the glow — Project I.G.I. keeps
+        // exactly what it drew before.
+        if (text.IsHighlighted && Style.DrawSelectionGlow)
+        {
+            DrawSelectionGlow(batch, text.LayoutX - 10, text.LayoutY - 6, text.LayoutWidth + 20, text.LayoutHeight + 12, screenWidth, screenHeight);
+        }
+
         font.Draw(batch, label, x, y, colour, _scale, _scale);
+    }
+
+    /// <summary>Draws the selection glow behind a lit entry or a selected row.</summary>
+    /// <remarks>
+    /// A missing sprite draws nothing rather than failing the screen: the glow is chrome, and a
+    /// menu archive without it still has to show its entries.
+    /// </remarks>
+    private void DrawSelectionGlow(SpriteBatch batch, int x, int y, int width, int height, int screenWidth, int screenHeight)
+    {
+        if (TryGetSprite(SelectionGlowSprite) is not { } glow || glow.Asset.Frames.Count == 0)
+        {
+            return;
+        }
+
+        glow.DrawStretched(batch, 0, Centred(x, y, width, height, screenWidth, screenHeight), SelectionGlowTint);
     }
 
     /// <summary>Draws a slider: its box, its two arrows and its carret.</summary>
@@ -842,10 +881,19 @@ public sealed class MenuRenderer : IDisposable
             if (index == box.Index)
             {
                 // The selected row gets a bar behind it, the way MenuText lights the selected entry:
-                // the same green at the highlighted level (GetColour's (c * 0.5) + 64).
-                batch.FillRect(
-                    Centred(box.LayoutX + 2, y, box.LayoutWidth - 4, lineHeight, screenWidth, screenHeight),
-                    MenuLayout.ToPixel(MenuLayout.GetColour(Style.ColourTable, MenuLayout.GreenIndex, selected: true)));
+                // the same green at the highlighted level (GetColour's (c * 0.5) + 64). A style that
+                // draws the selection glow lights the row with the glow sprite instead, tinted its
+                // own blue — the flat bar in I.G.I. 2's pale table barely reads against the backdrop.
+                if (Style.DrawSelectionGlow)
+                {
+                    DrawSelectionGlow(batch, box.LayoutX + 2, y, box.LayoutWidth - 4, lineHeight, screenWidth, screenHeight);
+                }
+                else
+                {
+                    batch.FillRect(
+                        Centred(box.LayoutX + 2, y, box.LayoutWidth - 4, lineHeight, screenWidth, screenHeight),
+                        MenuLayout.ToPixel(MenuLayout.GetColour(Style.ColourTable, MenuLayout.GreenIndex, selected: true)));
+                }
             }
 
             Draw(batch, font, box.Items[index].Label, box.LayoutX + 2, y, screenWidth, screenHeight);

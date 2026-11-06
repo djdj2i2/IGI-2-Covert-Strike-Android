@@ -17,6 +17,12 @@ namespace ProjectIGI.Game.Menus;
 /// double-click interval is what runs its action. That is how the original starts a mission from the
 /// Select Mission screen.
 /// </para>
+/// <para>
+/// A third, touch-only: the control draws no scrollbar — its <c>ScrollBar</c> belongs to the text
+/// boxes, not to this list — so on a phone the list scrolls by dragging it. A press that started
+/// inside keeps scrolling while the button is held, whole rows at a time; the selection stays
+/// where the press put it, the way a scrollbar moves the view and not the row.
+/// </para>
 /// </remarks>
 public partial class ScrollListBoxTask
 {
@@ -40,6 +46,14 @@ public partial class ScrollListBoxTask
     private readonly List<MenuListItem> _items = [];
     private int _ticksSinceClick = int.MaxValue;
     private int _clickedRow = -1;
+
+    /// <summary>Whether a press inside the list is holding a drag, rather than a tap.</summary>
+    /// <remarks>Latched by the press, not by the position: the finger may leave the rectangle mid-drag.</remarks>
+    private bool _dragging;
+
+    /// <summary>The pointer's Y when the drag last moved a whole row, in authored pixels.</summary>
+    /// <remarks>Only whole rows are consumed, so a slow drag accumulates the remainder.</remarks>
+    private int _dragAnchorY;
 
     /// <summary>Gets the items currently in the list.</summary>
     public IReadOnlyList<MenuListItem> Items => _items;
@@ -128,10 +142,42 @@ public partial class ScrollListBoxTask
     {
         ArgumentNullException.ThrowIfNull(pointer);
 
+        // A drag started inside the list keeps scrolling it while the button is held, even after
+        // the finger leaves the rectangle. Whole rows only, the remainder kept so a slow drag
+        // still accumulates; the selection stays where the press put it.
+        if (_dragging)
+        {
+            if (!pointer.IsDown)
+            {
+                _dragging = false;
+            }
+            else
+            {
+                int rowHeight = Math.Max(1, RowHeight);
+                int rows = (pointer.Y - _dragAnchorY) / rowHeight;
+                if (rows != 0)
+                {
+                    ScrollOffset = Math.Clamp(ScrollOffset + rows, 0, Math.Max(0, _items.Count - 1));
+                    _dragAnchorY += rows * rowHeight;
+
+                    // A scroll is not the first half of a double click: without this, dragging
+                    // off the selected row and tapping it again inside the double-click window
+                    // would run its action.
+                    _ticksSinceClick = int.MaxValue;
+                    _clickedRow = -1;
+                }
+            }
+
+            return;
+        }
+
         if (!inside || !pointer.Pressed || _items.Count == 0)
         {
             return;
         }
+
+        _dragging = true;
+        _dragAnchorY = pointer.Y;
 
         int row = ScrollOffset + ((pointer.Y - LayoutY) / Math.Max(1, RowHeight));
 

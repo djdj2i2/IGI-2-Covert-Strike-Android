@@ -400,7 +400,20 @@ public sealed partial class GameHost
                     {
                         if (startGame)
                         {
-                            StartMission(_missionState.PendingMissionId);
+                            if (_missionState.PendingMissionId > 0)
+                            {
+                                StartMission(_missionState.PendingMissionId);
+                            }
+                            else
+                            {
+                                // No mission was chosen: the list's active id is zero when the profile
+                                // has reached nothing and no row was tapped, so Game_SetMission recorded
+                                // 0. Starting mission 0 only logs and strands the player on a menu that
+                                // has already left, so ask for the main menu again instead — the same
+                                // request the flow makes after a mission ends.
+                                _logger.Error("Menu", "LeaveMenus asked to start a game with no mission chosen; reopening the main menu.");
+                                _loop.Flow.Request(FlowEvent.MainMenu);
+                            }
                         }
                         else
                         {

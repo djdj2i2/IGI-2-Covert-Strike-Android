@@ -40,23 +40,25 @@ public static class MenuLayout
 
     /// <summary>
     /// One title's menu presentation: which colour table it draws with, and which of the shared
-    /// I.G.I. 1 chrome it keeps.
+    /// presentation pieces it keeps.
     /// </summary>
     /// <param name="ColourTable">The colour table the menu's text and boxes draw from.</param>
     /// <param name="DrawScreenPanel">Whether a screen draws its green panel and title rule.</param>
     /// <param name="DrawBackgroundFx">Whether a screen draws the turning green overlay behind itself.</param>
+    /// <param name="DrawSelectionGlow">Whether a lit entry draws the glow sprite behind itself.</param>
     /// <remarks>
     /// A single value threaded presenter → host → renderer, so a title's look is one choice, not a
     /// second threading path per gate. I.G.I. 1 keeps everything it has always drawn; I.G.I. 2's
-    /// retail menu draws neither the panel nor the overlay.
+    /// retail menu draws neither the panel nor the overlay, and lights its selection with the glow
+    /// sprite instead of the flat bar.
     /// </remarks>
-    public readonly record struct MenuStyle(MenuColourTable ColourTable, bool DrawScreenPanel, bool DrawBackgroundFx)
+    public readonly record struct MenuStyle(MenuColourTable ColourTable, bool DrawScreenPanel, bool DrawBackgroundFx, bool DrawSelectionGlow)
     {
         /// <summary>Project I.G.I.'s menus, exactly as drawn before this type existed.</summary>
-        public static MenuStyle Igi1 { get; } = new(MenuColourTable.Igi1, DrawScreenPanel: true, DrawBackgroundFx: true);
+        public static MenuStyle Igi1 { get; } = new(MenuColourTable.Igi1, DrawScreenPanel: true, DrawBackgroundFx: true, DrawSelectionGlow: false);
 
-        /// <summary>I.G.I. 2's retail menus: its own colour table, no panel, no overlay.</summary>
-        public static MenuStyle Igi2 { get; } = new(MenuColourTable.Igi2, DrawScreenPanel: false, DrawBackgroundFx: false);
+        /// <summary>I.G.I. 2's retail menus: its own colour table, no panel, no overlay, glow selection.</summary>
+        public static MenuStyle Igi2 { get; } = new(MenuColourTable.Igi2, DrawScreenPanel: false, DrawBackgroundFx: false, DrawSelectionGlow: true);
     }
 
     /// <summary>
