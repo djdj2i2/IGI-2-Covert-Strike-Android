@@ -48,6 +48,41 @@ public sealed class TaskTypeRegistry
         where T : GameTask, new() =>
         Register(name, static () => new T(), parent);
 
+    /// <summary>Registers a task type, keeping the existing registration when it already makes the same class.</summary>
+    /// <typeparam name="T">The implementing class.</typeparam>
+    /// <param name="name">The name scripts spawn it by.</param>
+    /// <param name="parent">The parent type, or <see langword="null"/> for a root type.</param>
+    /// <returns>The registered type, or the existing one, kept as it is with its id and parent, when it already makes <typeparamref name="T"/>.</returns>
+    /// <exception cref="ArgumentException"><paramref name="name"/> is null or empty.</exception>
+    /// <exception cref="InvalidOperationException">The name is already registered by another class.</exception>
+    /// <remarks>
+    /// A script loaded into a loop whose title already registered the same class under the name is
+    /// the same registration again, not a collision: the menu script loads its types into a loop
+    /// that already holds them. A name held by a different class still throws, exactly as
+    /// <see cref="Register{T}"/> does, so a title's classes are never silently kept where the
+    /// shared ones were expected. The check is on the exact class, not a subclass: a title's
+    /// screen class derives from the shared one, and that is a different registration.
+    /// </remarks>
+    public TaskType RegisterOrKeep<T>(string name, TaskType? parent = null)
+        where T : GameTask, new()
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+
+        if (_types.TryGetValue(name, out TaskType? existing) && !existing.IsDeclarationOnly)
+        {
+            // A probe instance is what Register already makes to read a class's parameters; the
+            // exact type is what matters, since a title's class derives from the shared one.
+            if (existing.CreateInstance().GetType() == typeof(T))
+            {
+                return existing;
+            }
+
+            throw new InvalidOperationException($"The task type '{name}' is already registered.");
+        }
+
+        return Register<T>(name, parent);
+    }
+
     /// <summary>Registers a task type with an explicit factory.</summary>
     /// <param name="name">The name scripts spawn it by.</param>
     /// <param name="factory">Creates an instance.</param>

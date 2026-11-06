@@ -41,28 +41,28 @@ public static class MenuTaskTypes
     {
         ArgumentNullException.ThrowIfNull(types);
 
-        types.Register<MenuManagerTask>("MenuManager", parent);
-        types.Register<MenuFrameTask>("MenuFrame", parent);
-        types.Register<MenuScreenTask>("MenuScreen", parent);
-        types.Register<MenuTextTask>("MenuText", parent);
-        types.Register<MenuTextConditionalTask>("MenuTextConditional", parent);
-        types.Register<SlideBarTask>("SlideBar", parent);
-        types.Register<ListBoxTask>("ListBox", parent);
-        types.Register<ToggleBoxTask>("ToggleBox", parent);
-        types.Register<InputBoxTask>("InputBox", parent);
-        types.Register<AsciiBoxTask>("AsciiBox", parent);
-        types.Register<ScrollListBoxTask>("ScrollListBox", parent);
-        types.Register<PictureBoxTask>("PictureBox", parent);
-        types.Register<TextBoxTask>("TextBox", parent);
-        types.Register<TypeWriterBoxTask>("TypeWriterBox", parent);
-        types.Register<DialogWindowTask>("DialogWindow", parent);
+        types.RegisterOrKeep<MenuManagerTask>("MenuManager", parent);
+        types.RegisterOrKeep<MenuFrameTask>("MenuFrame", parent);
+        types.RegisterOrKeep<MenuScreenTask>("MenuScreen", parent);
+        types.RegisterOrKeep<MenuTextTask>("MenuText", parent);
+        types.RegisterOrKeep<MenuTextConditionalTask>("MenuTextConditional", parent);
+        types.RegisterOrKeep<SlideBarTask>("SlideBar", parent);
+        types.RegisterOrKeep<ListBoxTask>("ListBox", parent);
+        types.RegisterOrKeep<ToggleBoxTask>("ToggleBox", parent);
+        types.RegisterOrKeep<InputBoxTask>("InputBox", parent);
+        types.RegisterOrKeep<AsciiBoxTask>("AsciiBox", parent);
+        types.RegisterOrKeep<ScrollListBoxTask>("ScrollListBox", parent);
+        types.RegisterOrKeep<PictureBoxTask>("PictureBox", parent);
+        types.RegisterOrKeep<TextBoxTask>("TextBox", parent);
+        types.RegisterOrKeep<TypeWriterBoxTask>("TypeWriterBox", parent);
+        types.RegisterOrKeep<DialogWindowTask>("DialogWindow", parent);
 
         // Spawned without a declaration because it takes no parameters, like the structural types.
-        types.Register<ControlsMenuTask>("ControlsMenu", parent);
+        types.RegisterOrKeep<ControlsMenuTask>("ControlsMenu", parent);
 
         // Two more the engine owns rather than the script: no menu file names either, but a SlideBar
         // builds a pair of MenuButtons in its constructor and they have to resolve to a type.
-        types.Register<MenuButtonTask>("MenuButton", parent);
+        types.RegisterOrKeep<MenuButtonTask>("MenuButton", parent);
     }
 
     /// <summary>Registers the constants a menu script names.</summary>
