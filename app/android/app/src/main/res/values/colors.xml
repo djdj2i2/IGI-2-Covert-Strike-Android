@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- IGI 2 background — very dark navy blue-black -->
-    <color name="ic_launcher_background">#0a101e</color>
+    <!-- IGI 2 background — transparent, so the icon art's own alpha shows through -->
+    <color name="ic_launcher_background">#00000000</color>
     <!-- Adaptive icon foreground accent -->
     <color name="ic_launcher_foreground">#50a0ff</color>
     <!-- Splash / window background -->
