@@ -556,6 +556,7 @@ public sealed partial class Igi2TitlePlayer : ITitlePlayer, ITitleFirstPerson, I
     /// <inheritdoc/>
     public void Tick(in TitlePlayerInput input)
     {
+        ApplyCheats();
         Igi2PlayerAction held = Map(input.Held) | (Igi2PlayerAction)(input.TitleHeld | input.TitlePressed);
         Igi2PlayerAction pressed = Map(input.Pressed) | (Igi2PlayerAction)input.TitlePressed;
         _reader.MouseSensitivity = input.MouseSensitivity;
@@ -600,6 +601,93 @@ public sealed partial class Igi2TitlePlayer : ITitlePlayer, ITitleFirstPerson, I
         if (Level is not null)
         {
             EventWatch?.Observe();
+        }
+    }
+
+    /// <summary>Puts the cheats in force on the player for this tick, as the shared options read them.</summary>
+    /// <remarks>
+    /// Cheap to call every tick: the flags are plain assignments, and the weapon grant only touches a
+    /// weapon not already carried. Only the player's own damage and inventory are touched; a soldier's
+    /// damage stays vulnerable and its firing never reads the cheat.
+    /// </remarks>
+    private void ApplyCheats()
+    {
+        PlayerCheatOptions cheats = PlayerCheatOptions.Current;
+        Human.Damage.Invulnerable = cheats.InfiniteHealth;
+        Human.IsUnlimitedAmmo = cheats.InfiniteAmmo;
+        if (cheats.AllWeapons)
+        {
+            GrantCheatWeapons();
+        }
+
+        if (cheats.NoReload && !cheats.InfiniteAmmo)
+        {
+            TopUpMagazine();
+        }
+    }
+
+    /// <summary>Tops the player's inventory up to the whole roster while the all-weapons cheat is in force.</summary>
+    /// <remarks>
+    /// A weapon already carried is left exactly as it is, with its ammunition untouched. Switching the
+    /// cheat off takes nothing away.
+    /// </remarks>
+    private void GrantCheatWeapons()
+    {
+        if (Inventory is not { } inventory)
+        {
+            return;
+        }
+
+        foreach (Igi2WeaponItem item in inventory.Weapons)
+        {
+            if (!item.IsActive)
+            {
+                inventory.EnableWeaponType(item.WeaponType.WeaponId, addAmmo: true);
+            }
+        }
+    }
+
+    /// <summary>Refills the held weapon's magazine from the reserve, until the reserve runs out.</summary>
+    /// <remarks>
+    /// The no-reload cheat's own transfer, as I.G.I. 1's <c>HeldGun.Reload</c> does it: rounds already in
+    /// the magazine are kept and only what it lacks moves, capped at what is carried. Done directly on the
+    /// inventory so the fire delay is left alone — the firing's <c>Reload</c> clears it, which would let
+    /// the weapon fire faster than its own rate.
+    /// </remarks>
+    private void TopUpMagazine()
+    {
+        if (Inventory is not { } inventory || inventory.Current is not { } current)
+        {
+            return;
+        }
+
+        for (int slot = 0; slot < Igi2WeaponTypeTask.FireTypeSlots; slot++)
+        {
+            if (current.WeaponType.IsForceReload(slot))
+            {
+                continue;
+            }
+
+            Igi2FireTypeAmmo ammo = current.WeaponType.AmmoInfo(slot, inventory.Tables);
+            if (ammo.AmmoType is not { } ammoType || inventory.FindAmmo(ammoType.AmmoId) is not { } carried)
+            {
+                continue;
+            }
+
+            int lacking = ammo.RoundsPerClip - current.Loaded(slot);
+            if (lacking <= 0)
+            {
+                continue;
+            }
+
+            int take = Math.Min(lacking, carried.Count);
+            if (take <= 0)
+            {
+                continue;
+            }
+
+            carried.Spend(take);
+            current.SetLoaded(slot, current.Loaded(slot) + take);
         }
     }
 
