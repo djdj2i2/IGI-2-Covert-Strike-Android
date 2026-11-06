@@ -197,6 +197,14 @@ public sealed class Igi2GameConfig
     /// <summary>Gets or sets what saving the configuration does; nothing writes into the original installation unless told to.</summary>
     public Action<Igi2GameConfig>? Save { get; set; }
 
+    /// <summary>
+    /// Gets or sets what applying the graphics options does: pushing the options in force to the
+    /// live stores (the render scale, texture quality, filtering, antialiasing and terrain detail).
+    /// Assigned by the host's retail menus; <see langword="null"/> when nothing owns the live
+    /// stores, in which case applying files the options with the active profile and nothing more.
+    /// </summary>
+    public Action<Igi2GameConfig>? ApplyGraphics { get; set; }
+
     /// <summary>Sets the defaults, <c>Config_DefaultGameOptions</c>: one profile, <c>David Jones</c>, at the middle difficulty.</summary>
     public void SetDefaults()
     {
@@ -448,6 +456,109 @@ public static class Igi2GfxDetail
     /// <summary>The high level.</summary>
     public const int High = 0;
 
+    /// <summary>The medium level.</summary>
+    public const int Medium = 1;
+
+    /// <summary>The low level.</summary>
+    public const int Low = 2;
+
     /// <summary>A level of the player's own settings.</summary>
     public const int Custom = 3;
+
+    /// <summary>
+    /// The options a detail level stands for, retail's <c>GfxOptions_atDefaultOptions</c>.
+    /// </summary>
+    /// <remarks>
+    /// The retail table was never ported, so these rows are a reconstruction, not retail's own
+    /// numbers: the high row is the shipped new-profile default (<c>Igi2GfxOptions</c> as
+    /// constructed), medium steps the two detail sliders down a quarter, and low steps them to
+    /// half and switches the forests, lens flares and texture compression off, which is what the
+    /// defaults' own remarks say about the lowest row. The rows only have to be monotonic and
+    /// to match the defaults: the menu reads the level back from the fields, so a row that did
+    /// not match the defaults would show a fresh profile as Custom.
+    /// </remarks>
+    /// <param name="level">The level, a <c>GFXOPTIONS_DETAIL_*</c> value; anything else answers the current options unchanged.</param>
+    /// <param name="current">The options to keep when the level is not a preset row.</param>
+    /// <returns>The row's options, a fresh object.</returns>
+    public static Igi2GfxOptions Row(int level, Igi2GfxOptions current)
+    {
+        return level switch
+        {
+            High => new Igi2GfxOptions
+            {
+                TextureDetail = 0,
+                ModelDetail = 1f,
+                StencilShadows = false,
+                TextureCompression = false,
+                HighQualityForests = true,
+                WindOnForests = false,
+                LensFlares = true,
+                BulletHitEffects = false,
+                WaterQuality = 0,
+                TerrainDetail = 1f,
+            },
+            Medium => new Igi2GfxOptions
+            {
+                TextureDetail = 0,
+                ModelDetail = 0.75f,
+                StencilShadows = false,
+                TextureCompression = false,
+                HighQualityForests = true,
+                WindOnForests = false,
+                LensFlares = true,
+                BulletHitEffects = false,
+                WaterQuality = 0,
+                TerrainDetail = 0.75f,
+            },
+            Low => new Igi2GfxOptions
+            {
+                TextureDetail = 1,
+                ModelDetail = 0.5f,
+                StencilShadows = false,
+                TextureCompression = true,
+                HighQualityForests = false,
+                WindOnForests = false,
+                LensFlares = false,
+                BulletHitEffects = false,
+                WaterQuality = 0,
+                TerrainDetail = 0.5f,
+            },
+            _ => current.Copy(),
+        };
+    }
+
+    /// <summary>Reads the level a set of options stands for: the row they match, or Custom.</summary>
+    /// <param name="options">The options in force.</param>
+    /// <returns>The matching level, or <see cref="Custom"/> when no row matches.</returns>
+    public static int LevelFor(Igi2GfxOptions options)
+    {
+        if (Matches(options, Row(High, options)))
+        {
+            return High;
+        }
+
+        if (Matches(options, Row(Medium, options)))
+        {
+            return Medium;
+        }
+
+        if (Matches(options, Row(Low, options)))
+        {
+            return Low;
+        }
+
+        return Custom;
+    }
+
+    private static bool Matches(Igi2GfxOptions options, Igi2GfxOptions row) =>
+        options.TextureDetail == row.TextureDetail
+        && Math.Abs(options.ModelDetail - row.ModelDetail) < 0.001f
+        && options.StencilShadows == row.StencilShadows
+        && options.TextureCompression == row.TextureCompression
+        && options.HighQualityForests == row.HighQualityForests
+        && options.WindOnForests == row.WindOnForests
+        && options.LensFlares == row.LensFlares
+        && options.BulletHitEffects == row.BulletHitEffects
+        && options.WaterQuality == row.WaterQuality
+        && Math.Abs(options.TerrainDetail - row.TerrainDetail) < 0.001f;
 }

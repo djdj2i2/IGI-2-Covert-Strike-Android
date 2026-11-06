@@ -39,6 +39,9 @@ public sealed class Igi2ConfigNatives : IMenuConfiguration, IMenuMissionStats
     private readonly Func<MenuStringTable?> _strings;
     private readonly Igi2SaveSession? _saves;
     private readonly IProjectIGILogger _logger;
+    private string? _deviceName;
+    private Func<int>? _getResolutionTier;
+    private Action<int>? _setResolutionTier;
 
     /// <summary>The mark a locked mission carries in the list.</summary>
     private const string LockedSuffix = " (Locked)";
@@ -69,6 +72,26 @@ public sealed class Igi2ConfigNatives : IMenuConfiguration, IMenuMissionStats
         _strings = strings;
         _saves = saves;
         _logger = logger ?? NullLogger.Instance;
+    }
+
+    /// <summary>Supplies what only the shell knows to the graphics screens: the renderer's name and the resolution tier.</summary>
+    /// <param name="deviceName">The display device's name, for the device list's single entry.</param>
+    /// <param name="getResolutionTier">Reads the resolution tier the render scale stands for, nought to three.</param>
+    /// <param name="setResolutionTier">Writes the resolution tier, as the render scale.</param>
+    /// <remarks>
+    /// The resolution has no field in the options record — retail keeps a display mode instead,
+    /// and this port's display modes are the render-scale tiers — so it is read and written
+    /// straight through these, while every other option goes through the record and is pushed
+    /// live by <c>GfxOptions_ApplyCurrentOptions</c>.
+    /// </remarks>
+    public void ConfigureGraphics(
+        string? deviceName,
+        Func<int>? getResolutionTier,
+        Action<int>? setResolutionTier)
+    {
+        _deviceName = deviceName;
+        _getResolutionTier = getResolutionTier;
+        _setResolutionTier = setResolutionTier;
     }
 
     /// <inheritdoc/>
@@ -220,6 +243,194 @@ public sealed class Igi2ConfigNatives : IMenuConfiguration, IMenuMissionStats
                     _saves?.Slots?.CountValid(_saves.Owner with { Mission = arguments.GetInt32(0) }) ?? 0);
                 return true;
 
+            // The graphics screens (904-907). The fills, the getters and the two profile-level
+            // setters below are the natives the screens call that the game's own registry never
+            // had: the ten field setters (GfxOptions_SetStencilShadows and friends) and the
+            // gamma/crosshair settings natives already exist there, so they are not repeated
+            // here — the evaluator reaches the game's registry first and this switch only sees
+            // the names it does not hold.
+            case "Config_FillRenderDeviceListBox":
+                Fill([new MenuListItem(0, _deviceName ?? "Default", true)]);
+                return true;
+
+            case "Config_FillScreenResolutionListBox":
+                Fill([
+                    new MenuListItem(0, "540P (ULTRA)", true),
+                    new MenuListItem(1, "720P (PERFORMANCE)", true),
+                    new MenuListItem(2, "900P (BALANCED)", true),
+                    new MenuListItem(3, "NATIVE (MAX)", true),
+                ]);
+                return true;
+
+            case "GfxOptions_FillAntialiasingModeListBox":
+                Fill([
+                    new MenuListItem(0, "Off", true),
+                    new MenuListItem(1, "2x", true),
+                    new MenuListItem(2, "4x", true),
+                    new MenuListItem(3, "6x", true),
+                ]);
+                return true;
+
+            case "GfxOptions_FillTextureFilteringModeListBox":
+                Fill([
+                    new MenuListItem(0, "Bilinear", true),
+                    new MenuListItem(1, "Trilinear", true),
+                    new MenuListItem(2, "Anisotropic", true),
+                ]);
+                return true;
+
+            case "GfxOptions_FillDetailLevelListBox":
+                Fill([
+                    new MenuListItem(0, "High", true),
+                    new MenuListItem(1, "Medium", true),
+                    new MenuListItem(2, "Low", true),
+                    new MenuListItem(3, "Custom", true),
+                ]);
+                return true;
+
+            case "GfxOptions_FillTextureDetailListBox":
+                Fill([
+                    new MenuListItem(0, "High", true),
+                    new MenuListItem(1, "Low", true),
+                    new MenuListItem(2, "Ultra Low", true),
+                ]);
+                return true;
+
+            case "GfxOptions_FillWaterQualityListBox":
+                Fill([
+                    new MenuListItem(0, "Normal", true),
+                    new MenuListItem(1, "High", true),
+                    new MenuListItem(2, "Highest", true),
+                ]);
+                return true;
+
+            case "Config_GraphicOptionsGetDevice":
+                result = QvmValue.FromInt32(0);
+                return true;
+
+            case "Config_GraphicOptionsGetResolution":
+                result = QvmValue.FromInt32(_getResolutionTier?.Invoke() ?? 0);
+                return true;
+
+            case "Config_GameOptionsGfxGetForceSoftwareVertexProcessing":
+                result = QvmValue.FromInt32(_config.Active?.ForceSoftwareVertexProcessing == true ? 1 : 0);
+                return true;
+
+            case "GfxOptions_GetAntialiasingMode":
+                result = QvmValue.FromInt32(_config.Active?.AntialiasingMode ?? 0);
+                return true;
+
+            case "GfxOptions_GetTextureFilteringMode":
+                result = QvmValue.FromInt32(_config.Active?.TextureFilteringMode ?? 0);
+                return true;
+
+            case "GfxOptions_GetDetailLevelFromScript":
+                result = QvmValue.FromInt32(Igi2GfxDetail.LevelFor(_config.Gfx));
+                return true;
+
+            case "GfxOptions_GetTextureDetailFromScript":
+                result = QvmValue.FromInt32(_config.Gfx.TextureDetail);
+                return true;
+
+            case "GfxOptions_GetModelDetail":
+                result = QvmValue.FromSingle(_config.Gfx.ModelDetail);
+                return true;
+
+            case "GfxOptions_GetTerrainDetail":
+                result = QvmValue.FromSingle(_config.Gfx.TerrainDetail);
+                return true;
+
+            case "GfxOptions_GetWaterQuality":
+                result = QvmValue.FromInt32(_config.Gfx.WaterQuality);
+                return true;
+
+            case "GfxOptions_IsStencilShadows":
+                result = QvmValue.FromInt32(_config.Gfx.StencilShadows ? 1 : 0);
+                return true;
+
+            case "GfxOptions_IsTextureCompression":
+                result = QvmValue.FromInt32(_config.Gfx.TextureCompression ? 1 : 0);
+                return true;
+
+            case "GfxOptions_IsHighQualityForests":
+                result = QvmValue.FromInt32(_config.Gfx.HighQualityForests ? 1 : 0);
+                return true;
+
+            case "GfxOptions_IsWindOnForests":
+                result = QvmValue.FromInt32(_config.Gfx.WindOnForests ? 1 : 0);
+                return true;
+
+            case "GfxOptions_IsLensFlares":
+                result = QvmValue.FromInt32(_config.Gfx.LensFlares ? 1 : 0);
+                return true;
+
+            case "GfxOptions_IsBulletHitEffects":
+                result = QvmValue.FromInt32(_config.Gfx.BulletHitEffects ? 1 : 0);
+                return true;
+
+            case "GfxOptions_IsCustomDetail":
+                result = QvmValue.FromInt32(Igi2GfxDetail.LevelFor(_config.Gfx) == Igi2GfxDetail.Custom ? 1 : 0);
+                return true;
+
+            case "Config_GraphicOptionsSetDevice":
+                if (_config.Active is { } deviceProfile)
+                {
+                    deviceProfile.Device = _deviceName ?? string.Empty;
+                }
+
+                return true;
+
+            case "Config_GraphicOptionsSetResolution":
+                _setResolutionTier?.Invoke(Math.Clamp(arguments.GetInt32(0), 0, 3));
+                return true;
+
+            case "Config_GameOptionsGfxSetForceSoftwareVertexProcessing":
+                if (_config.Active is { } softwareProfile)
+                {
+                    softwareProfile.ForceSoftwareVertexProcessing = arguments.GetInt32(0) != 0;
+                }
+
+                return true;
+
+            case "GfxOptions_SetAntialiasingMode":
+                if (_config.Active is { } antialiasingProfile)
+                {
+                    antialiasingProfile.AntialiasingMode = Math.Clamp(arguments.GetInt32(0), 0, 3);
+                }
+
+                return true;
+
+            case "GfxOptions_SetTextureFilteringMode":
+                if (_config.Active is { } filteringProfile)
+                {
+                    filteringProfile.TextureFilteringMode = Math.Clamp(arguments.GetInt32(0), 0, 2);
+                }
+
+                return true;
+
+            case "GfxOptions_SetDetailLevelFromScript":
+                int level = Math.Clamp(arguments.GetInt32(0), 0, 3);
+                ApplyDetailRow(Igi2GfxDetail.Row(level, _config.Gfx));
+                _config.GfxDetailLevel = level;
+                return true;
+
+            case "GfxOptions_ApplyCurrentOptions":
+                // What OK on screen 905 runs, after the save that ran the Set scripts: the
+                // options in force are filed with the active profile — the same copy the
+                // config file's ApplyCurrentOptionsToLastPlayerProfile takes for the profile
+                // just read — and the host's applier pushes the mapped ones to the live
+                // stores and writes settings.cfg. Without the applier the filing still
+                // happens, so the record survives the screen even where nothing owns the
+                // live stores.
+                if (_config.Active is { } activeProfile)
+                {
+                    activeProfile.GfxDetailLevel = _config.GfxDetailLevel;
+                    activeProfile.Gfx = _config.Gfx.Copy();
+                }
+
+                _config.ApplyGraphics?.Invoke(_config);
+                return true;
+
             default:
                 return false;
         }
@@ -236,6 +447,23 @@ public sealed class Igi2ConfigNatives : IMenuConfiguration, IMenuMissionStats
         {
             scroll.SetItems(items);
         }
+    }
+
+    /// <summary>Copies a detail level's row into the options in force.</summary>
+    /// <remarks>The record is the object the getters read and the applier pushes, so the row is copied field by field rather than replacing it.</remarks>
+    private void ApplyDetailRow(Igi2GfxOptions row)
+    {
+        Igi2GfxOptions gfx = _config.Gfx;
+        gfx.TextureDetail = row.TextureDetail;
+        gfx.ModelDetail = row.ModelDetail;
+        gfx.StencilShadows = row.StencilShadows;
+        gfx.TextureCompression = row.TextureCompression;
+        gfx.HighQualityForests = row.HighQualityForests;
+        gfx.WindOnForests = row.WindOnForests;
+        gfx.LensFlares = row.LensFlares;
+        gfx.BulletHitEffects = row.BulletHitEffects;
+        gfx.WaterQuality = row.WaterQuality;
+        gfx.TerrainDetail = row.TerrainDetail;
     }
 
     /// <summary>Walks the campaign, one entry per mission, marking the ones past the frontier locked.</summary>

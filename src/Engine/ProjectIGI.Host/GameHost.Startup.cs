@@ -430,7 +430,12 @@ public sealed partial class GameHost
                             state.Running = false;
                         }
                     },
-                    _logger));
+                    _logger,
+                    // The retail graphics screen's OK writes settings.cfg through this, as the
+                    // pause screen's OK does: the archived variables it changed are only
+                    // flushed on a clean shutdown otherwise, and the process may be killed
+                    // rather than shut down.
+                    SaveSettings: () => state.Console.SaveSettings()));
             if (_retailMenus is null)
             {
                 _logger.Warning("Menu", "This title draws no retail menus; the menu script is not started.");
