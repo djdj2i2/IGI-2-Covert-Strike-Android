@@ -282,9 +282,7 @@ public sealed partial class Igi2HudRenderer
         foreach (ProjectIGI.Game.Igi2.Flow.Igi2StatusMessageSlot slot in title.StatusMessages.Slots)
         {
             if (!slot.IsUsed || slot.Printed <= 0 || slot.Message?.IsCutsceneMessage != title.IsCutscenePlaying) { continue; }
-            _font?.DrawCentered(batch, slot.Text.AsSpan(0, Math.Min(slot.Printed, slot.Text.Length)), width * 0.5f * _scale, y * _scale,
-                Bgra32.FromRgba(255, 255, 255, Channel(slot.Fade)), _scale, _scale);
-            y += 28f;
+            y += DrawMessageLine(batch, slot.Text.AsSpan(0, Math.Min(slot.Printed, slot.Text.Length)), slot.Fade, width, y);
         }
 
         // The other game's mission's lines, under the player's own, in the same face.
@@ -301,10 +299,42 @@ public sealed partial class Igi2HudRenderer
             }
 
             float fade = Math.Clamp((line.DisplayFrame + 1) / ProjectIGI.Presentation.Hud.Remastered.HudModel.MissionMessageFadeTicks, 0f, 1f);
-            _font?.DrawCentered(batch, line.Text.AsSpan(0, Math.Min(line.RevealedCharacters, line.Text.Length)), width * 0.5f * _scale, y * _scale,
-                Bgra32.FromRgba(255, 255, 255, Channel(fade)), _scale, _scale);
-            y += 28f;
+            y += DrawMessageLine(batch, line.Text.AsSpan(0, Math.Min(line.RevealedCharacters, line.Text.Length)), fade, width, y);
         }
+    }
+
+    /// <summary>
+    /// One message line, larger than the status art and outlined so it reads over any ground: a line is the dialogue, not a
+    /// readout, so it draws at half as much again as the HUD's own scale, in white over a black outline, and is shrunk to fit
+    /// the width rather than running off the screen. Returns its step to the next line, in layout pixels.
+    /// </summary>
+    private float DrawMessageLine(SpriteBatch batch, ReadOnlySpan<char> text, float fade, float width, float y)
+    {
+        if (_font is null || text.Length == 0)
+        {
+            return 0f;
+        }
+
+        float scale = _scale * 1.5f;
+        (float textWidth, float textHeight) = _font.Measure(text, scale, scale);
+        float maxWidth = width * _scale * 0.96f;
+        if (textWidth > maxWidth && textWidth > 0f)
+        {
+            scale *= maxWidth / textWidth;
+            (_, textHeight) = _font.Measure(text, scale, scale);
+        }
+
+        float centreX = width * 0.5f * _scale;
+        float top = y * _scale;
+        byte alpha = Channel(fade);
+        Bgra32 shadow = Bgra32.FromRgba(0, 0, 0, alpha);
+        float outline = MathF.Max(1f, scale * 0.75f);
+        _font.DrawCentered(batch, text, centreX - outline, top, shadow, scale, scale);
+        _font.DrawCentered(batch, text, centreX + outline, top, shadow, scale, scale);
+        _font.DrawCentered(batch, text, centreX, top - outline, shadow, scale, scale);
+        _font.DrawCentered(batch, text, centreX, top + outline, shadow, scale, scale);
+        _font.DrawCentered(batch, text, centreX, top, Bgra32.FromRgba(255, 255, 255, alpha), scale, scale);
+        return (textHeight + (8f * _scale)) / _scale;
     }
 
     private void Sprite(SpriteBatch batch, string name, float x, float y, Bgra32 colour)

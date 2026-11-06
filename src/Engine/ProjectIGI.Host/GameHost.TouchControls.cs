@@ -72,7 +72,6 @@ public sealed partial class GameHost
         TouchButton.Peek => "Peek",
         TouchButton.Map => "MapComputer",
         TouchButton.Binoculars => "Binoculars",
-        TouchButton.NightVision => "Binoculars",
         TouchButton.ZoomIn => "ZoomIn",
         TouchButton.ZoomOut => "ZoomOut",
         TouchButton.Close => "MapComputer",

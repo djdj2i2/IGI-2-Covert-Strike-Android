@@ -34,9 +34,14 @@ public sealed partial class Igi2HudRenderer : ITitleHudPresenter
         if (player is not Igi2TitlePlayer title || screenWidth <= 0 || screenHeight <= 0) { return; }
         // The status art by the interface scale every title's is drawn at (UiScale), for the display I.G.I. 2's was laid out at:
         // retail places it in the display's own pixels, so it lays out here in the pixels of a display that many times smaller.
-        // World-space sights and view flashes stay in pixels.
-        _scale = UiScale.Resolve(requestedScale, screenWidth, screenHeight, AuthoredWidth, AuthoredHeight);
+        // World-space sights and view flashes stay in pixels. Never below 2x: a phone holds 1280x720 once over, so at 1x the
+        // health bar, weapon readout and timer are a small island on a dense display. Whole numbers only, as UiScale says:
+        // a fractional scale resamples the pixel art into a blur.
+        _scale = EffectiveHudScale(screenWidth, screenHeight, requestedScale);
         float width = screenWidth / _scale, height = screenHeight / _scale;
+        // How much bigger the HUD draws than the display earns, for the sight: it is drawn in screen pixels, not through
+        // the scale above, so it takes the same boost or the crosshair stays small while everything around it grows.
+        float hudBoost = _scale / UiScale.Resolve(requestedScale, screenWidth, screenHeight, AuthoredWidth, AuthoredHeight);
         // The open computer covers the view and the status display.
         MeasureComputer(title, screenWidth, screenHeight);
         if (title.IsComputerShown)
@@ -70,7 +75,7 @@ public sealed partial class Igi2HudRenderer : ITitleHudPresenter
         // The remastered crosshair stands in for the original's sight where it is chosen; scopes keep their own.
         if (!(remastered && HudCVars.Crosshair.Value))
         {
-            DrawSight(batch, title, screenWidth, screenHeight);
+            DrawSight(batch, title, screenWidth, screenHeight, hudBoost);
         }
 
         // Through the visor the hit washes the corners itself; otherwise the original's red corners.
@@ -88,7 +93,12 @@ public sealed partial class Igi2HudRenderer : ITitleHudPresenter
             || title.Human.IsThirdPerson || title.Human.View.IsOverride || title.Human.CameraMode != 1
             || title.Weapons is not { Inventory.Current: not null } weapons || weapons.IsZoomFireModeActive);
 
-    private static void DrawSight(SpriteBatch batch, Igi2TitlePlayer title, int screenWidth, int screenHeight)
+    /// <summary>The scale the status art draws at: what the display earns, never below 2x, so the HUD pops on a phone.</summary>
+    /// <remarks>Whole numbers only, as <see cref="UiScale"/> says: a fractional scale resamples the pixel art into a blur.</remarks>
+    private static float EffectiveHudScale(int screenWidth, int screenHeight, int requestedScale = UiScale.Automatic) =>
+        Math.Max(2, UiScale.Resolve(requestedScale, screenWidth, screenHeight, AuthoredWidth, AuthoredHeight));
+
+    private static void DrawSight(SpriteBatch batch, Igi2TitlePlayer title, int screenWidth, int screenHeight, float hudBoost)
     {
         if (!SightShown(title) || title.Weapons is not { Inventory.Current: { } held })
         {
@@ -106,8 +116,9 @@ public sealed partial class Igi2HudRenderer : ITitleHudPresenter
             title.Human.View.FieldOfView, screenWidth, screenHeight, thick);
         // The sight as the settings draw it: larger, recoloured, and over a dark outline
         // where asked, so it reads on a dense display and against bright ground. The lines
-        // are scaled about the screen's centre, which is where the sight sits.
-        float scale = HudCVars.CrosshairScale.Value;
+        // are scaled about the screen's centre, which is where the sight sits. The HUD's own
+        // boost applies on top of the setting, so the sight grows with the rest of the HUD.
+        float scale = HudCVars.CrosshairScale.Value * hudBoost;
         float centreX = screenWidth * 0.5f;
         float centreY = screenHeight * 0.5f;
         float thickness = (thick ? 2f : 1f) * scale;

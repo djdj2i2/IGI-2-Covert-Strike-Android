@@ -124,7 +124,11 @@ internal static class Igi2FlowSystems
         {
             message.Strings = strings;
             message.Screen = player.StatusMessages;
-            message.Listener = () => player.Human.View.Position;
+            // A line's sound plays at the listener, and the ear is the camera: in play that is the player's eyes, but a
+            // cutscene's camera is somewhere else entirely, so a line sent from the player's body would be heard across
+            // whatever distance lies between the two and fall silent past its authored reach. The camera's place while one
+            // is placed, the player's eyes otherwise.
+            message.Listener = () => b.Level.CutsceneView?.Position ?? player.Human.View.Position;
             message.TaskById = id => b.PlacedById.GetValueOrDefault(id);
             message.InitText();
         }

@@ -19,8 +19,8 @@ public static class TouchControlsRenderer
     private static readonly Bgra32 IgiRimHeld = Bgra32.FromRgba(160, 195, 245, 255);
     private static readonly Bgra32 IgiInk = Bgra32.FromRgba(228, 238, 252, 255);
     private static readonly Bgra32 IgiInkFaint = Bgra32.FromRgba(140, 165, 200, 165);
-    // The two goggles read apart at a glance: the night-vision button green, the thermal one blue.
-    private static readonly Bgra32 IgiNightVision = Bgra32.FromRgba(150, 225, 150, 255);
+    // The thermal button reads apart at a glance: blue, next to the binoculars' plain ink. I.G.I. 2 has no night-vision
+    // goggles, only the thermal imaging device, so there is no green night-vision button.
     private static readonly Bgra32 IgiThermal = Bgra32.FromRgba(140, 195, 250, 255);
     private static readonly Bgra32 IgiStickFill = Bgra32.FromRgba(16, 24, 42, 90);
     // The palette below stays for the customization toolbar only; it is a config tool, not the game buttons.
@@ -84,7 +84,6 @@ public static class TouchControlsRenderer
             float size = spot.Radius * (spot.Button == TouchButton.Fire ? 0.5f : 0.46f);
             Bgra32 ink = spot.Button switch
             {
-                TouchButton.NightVision => IgiNightVision,
                 TouchButton.Thermal => IgiThermal,
                 TouchButton.Use when !offered && !held => IgiInkFaint,
                 _ => IgiInk,
@@ -426,17 +425,6 @@ public static class TouchControlsRenderer
                 Line(-0.12f, -0.15f, 0.12f, -0.15f);
                 Line(-0.62f, -0.15f, -0.4f, -0.68f);
                 Line(0.62f, -0.15f, 0.4f, -0.68f);
-                break;
-            case TouchButton.NightVision:
-                // The binoculars' rings and barrels, with a small star over them: the green
-                // night-vision goggles, next to the thermal's lenses and rising heat.
-                Ring(-0.46f, 0.2f, 0.38f);
-                Ring(0.46f, 0.2f, 0.38f);
-                Line(-0.12f, -0.15f, 0.12f, -0.15f);
-                Line(-0.62f, -0.15f, -0.4f, -0.68f);
-                Line(0.62f, -0.15f, 0.4f, -0.68f);
-                Line(0f, -0.95f, 0f, -0.55f);
-                Line(-0.2f, -0.75f, 0.2f, -0.75f);
                 break;
             case TouchButton.ZoomIn:
                 Line(-0.6f, 0f, 0.6f, 0f);
