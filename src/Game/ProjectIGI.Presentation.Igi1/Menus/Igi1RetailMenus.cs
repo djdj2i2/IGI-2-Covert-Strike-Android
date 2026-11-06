@@ -38,7 +38,8 @@ internal sealed class Igi1RetailMenus : IRetailMenus
             request.Sounds,
             // Leaving with StartGame starts the chosen mission; leaving any other way quits.
             leaving => leave(leaving == MenuManagerState.StartGame),
-            request.Logger));
+            request.Logger,
+            MenuStyle.Igi1));
 
         // -screen is a development shortcut, not a game feature: the script decides where the menu
         // opens, and this overwrites that one parameter before the manager reads it.

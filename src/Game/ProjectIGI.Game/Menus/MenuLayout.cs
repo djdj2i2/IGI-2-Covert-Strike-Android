@@ -24,6 +24,41 @@ public static class MenuLayout
     /// </remarks>
     public const float FullIntensity = 128.0f;
 
+    /// <summary>Which title's menu colour table a menu draws with.</summary>
+    /// <remarks>
+    /// Project I.G.I.'s table is the one transcribed from its binary; I.G.I. 2's is a first-pass
+    /// derivation from a retail screenshot (see <see cref="Igi2Colours"/>) — same indices, different RGB.
+    /// </remarks>
+    public enum MenuColourTable
+    {
+        /// <summary>Project I.G.I.'s table: green entries, orange version text.</summary>
+        Igi1,
+
+        /// <summary>I.G.I. 2's table: pale entries, pale version text.</summary>
+        Igi2,
+    }
+
+    /// <summary>
+    /// One title's menu presentation: which colour table it draws with, and which of the shared
+    /// I.G.I. 1 chrome it keeps.
+    /// </summary>
+    /// <param name="ColourTable">The colour table the menu's text and boxes draw from.</param>
+    /// <param name="DrawScreenPanel">Whether a screen draws its green panel and title rule.</param>
+    /// <param name="DrawBackgroundFx">Whether a screen draws the turning green overlay behind itself.</param>
+    /// <remarks>
+    /// A single value threaded presenter → host → renderer, so a title's look is one choice, not a
+    /// second threading path per gate. I.G.I. 1 keeps everything it has always drawn; I.G.I. 2's
+    /// retail menu draws neither the panel nor the overlay.
+    /// </remarks>
+    public readonly record struct MenuStyle(MenuColourTable ColourTable, bool DrawScreenPanel, bool DrawBackgroundFx)
+    {
+        /// <summary>Project I.G.I.'s menus, exactly as drawn before this type existed.</summary>
+        public static MenuStyle Igi1 { get; } = new(MenuColourTable.Igi1, DrawScreenPanel: true, DrawBackgroundFx: true);
+
+        /// <summary>I.G.I. 2's retail menus: its own colour table, no panel, no overlay.</summary>
+        public static MenuStyle Igi2 { get; } = new(MenuColourTable.Igi2, DrawScreenPanel: false, DrawBackgroundFx: false);
+    }
+
     /// <summary>
     /// The colour table <c>MenuText</c> indexes with its <c>ColourIndex</c> parameter, on the
     /// original's 0–128 scale.
@@ -40,6 +75,60 @@ public static class MenuLayout
         (0.0f, 128.0f, 0.0f),      // TEXT_GREEN
         (128.0f, 95.0f, 0.0f),     // TEXT_ORANGE
     ];
+
+    /// <summary>
+    /// I.G.I. 2's colour table, same indices and 0–128 scale as <see cref="Colours"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>FIRST PASS — APPROXIMATE. Refine from a full-size retail screenshot.</b> The exact I.G.I. 2
+    /// RGB is not determinable from the 320×180 thumbnail that is the only retail reference on hand:
+    /// every text pixel in it is blended with the dark-blue backdrop. These values are derived from the
+    /// brightest glyph pixels measured in that thumbnail (see below), not read from the game.
+    /// </para>
+    /// <para>
+    /// Indices 0 and 1 are shared with Project I.G.I. (black; white — the thumbnail's title row
+    /// measures pure white, brightest pixel (249, 255, 255)). Index 2, the entries: brightest glyph
+    /// pixels in the entry band measure (201, 218, 244), i.e. (101, 109, 122) on this scale at full
+    /// coverage, rounded up a little for partial-coverage darkening — pale blue-grey, not green.
+    /// Index 3, the version text: its "1.0" glyph is only a few pixels, brightest (109, 114, 120),
+    /// heavily blended with the backdrop, so it is set a touch dimmer than index 2 in the same pale
+    /// family. Both are pale, as the reference shows; the exact split between them is a guess.
+    /// </para>
+    /// </remarks>
+    public static IReadOnlyList<(float R, float G, float B)> Igi2Colours { get; } =
+    [
+        (0.0f, 0.0f, 0.0f),          // TEXT_BLACK — as I.G.I. 1
+        (128.0f, 128.0f, 128.0f),    // TEXT_WHITE — as I.G.I. 1; the title measures pure white
+        (104.0f, 112.0f, 124.0f),    // TEXT_GREEN slot: pale blue-grey entries (FIRST PASS, see remarks)
+        (96.0f, 104.0f, 116.0f),     // TEXT_ORANGE slot: pale version text (FIRST PASS, see remarks)
+    ];
+
+    /// <summary>Gets a title's colour table.</summary>
+    /// <param name="table">Which title's table.</param>
+    /// <returns>The four entries on the original's 0–128 scale.</returns>
+    public static IReadOnlyList<(float R, float G, float B)> ColoursFor(MenuColourTable table) =>
+        table switch
+        {
+            MenuColourTable.Igi2 => Igi2Colours,
+            _ => Colours,
+        };
+
+    /// <summary>Gets the controls list's key-column colour, on the original's 0–128 scale.</summary>
+    /// <param name="table">Which title's table.</param>
+    /// <returns>The amber the key column draws in.</returns>
+    /// <remarks>
+    /// Project I.G.I.'s is its own literal, <c>(128, 90, 0)</c> — <b>not</b> its table's
+    /// <c>TEXT_ORANGE</c> <c>(128, 95, 0)</c> — so it is kept exactly rather than read from the table.
+    /// I.G.I. 2 has no such literal on hand, so its key column takes its table's index 3, the same
+    /// pale entry the version text draws in.
+    /// </remarks>
+    public static (float R, float G, float B) ControlsKeyColour(MenuColourTable table) =>
+        table switch
+        {
+            MenuColourTable.Igi2 => Igi2Colours[3],
+            _ => (128.0f, 90.0f, 0.0f),
+        };
 
     /// <summary>
     /// Maps an authored menu position to a screen position.
@@ -72,7 +161,7 @@ public static class MenuLayout
             (screenHeight >> 1) + ((y - (AuthoredHeight / 2)) * s));
     }
 
-    /// <summary>Gets a colour from the table, on the original's 0–128 scale.</summary>
+    /// <summary>Gets a colour from Project I.G.I.'s table, on the original's 0–128 scale.</summary>
     /// <param name="colourIndex">The <c>ColourIndex</c> parameter. Only the low four bits are used.</param>
     /// <param name="selected">Whether the item is highlighted.</param>
     /// <returns>The colour components.</returns>
@@ -81,9 +170,18 @@ public static class MenuLayout
     /// channels toward the middle rather than scaling the whole colour up — <c>TEXT_ORANGE</c>'s blue
     /// goes from 0 to 64 while its red stays at 128.
     /// </remarks>
-    public static (float R, float G, float B) GetColour(int colourIndex, bool selected)
+    public static (float R, float G, float B) GetColour(int colourIndex, bool selected) =>
+        GetColour(MenuColourTable.Igi1, colourIndex, selected);
+
+    /// <summary>Gets a colour from a title's table, on the original's 0–128 scale.</summary>
+    /// <param name="table">Which title's table.</param>
+    /// <param name="colourIndex">The <c>ColourIndex</c> parameter. Only the low four bits are used.</param>
+    /// <param name="selected">Whether the item is highlighted.</param>
+    /// <returns>The colour components.</returns>
+    /// <remarks>The selection brightening is the same <c>c * 0.5 + 64</c> for every title.</remarks>
+    public static (float R, float G, float B) GetColour(MenuColourTable table, int colourIndex, bool selected)
     {
-        (float r, float g, float b) = Colours[colourIndex & 0xF];
+        (float r, float g, float b) = ColoursFor(table)[colourIndex & 0xF];
         return selected
             ? ((r * 0.5f) + 64.0f, (g * 0.5f) + 64.0f, (b * 0.5f) + 64.0f)
             : (r, g, b);

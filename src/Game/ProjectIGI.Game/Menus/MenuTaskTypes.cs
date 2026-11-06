@@ -53,6 +53,7 @@ public static class MenuTaskTypes
         types.RegisterOrKeep<AsciiBoxTask>("AsciiBox", parent);
         types.RegisterOrKeep<ScrollListBoxTask>("ScrollListBox", parent);
         types.RegisterOrKeep<PictureBoxTask>("PictureBox", parent);
+        types.RegisterOrKeep<MenuStatsScreenTask>("MenuStatsScreen", parent);
         types.RegisterOrKeep<TextBoxTask>("TextBox", parent);
         types.RegisterOrKeep<TypeWriterBoxTask>("TypeWriterBox", parent);
         types.RegisterOrKeep<DialogWindowTask>("DialogWindow", parent);

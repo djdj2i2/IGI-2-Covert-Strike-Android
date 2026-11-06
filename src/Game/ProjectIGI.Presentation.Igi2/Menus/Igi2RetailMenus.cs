@@ -1,3 +1,7 @@
+using ProjectIGI.Engine.Titles;
+using ProjectIGI.Game.Igi2.Config;
+using ProjectIGI.Game.Igi2.Menus;
+using ProjectIGI.Game.Igi2.Saves;
 using ProjectIGI.Game.Menus;
 using ProjectIGI.Presentation.Igi1.Menus;
 
@@ -64,7 +68,10 @@ internal sealed class Igi2RetailMenus : IRetailMenus
             request.Sounds,
             // Leaving with StartGame starts the chosen mission; leaving any other way quits.
             leaving => leave(leaving == MenuManagerState.StartGame),
-            request.Logger));
+            request.Logger,
+            // I.G.I. 2's own colour table, and none of the shared green chrome: no screen panel,
+            // no BackgroundFx overlay. The presenter is where the title is known, so it is set here.
+            MenuStyle.Igi2));
 
         // The script passes 904 as "Current menuscreen": the screen it actually opens on comes
         // from its default-screen expression, Flow_IsPlayCredits() ? 916 : 923, which the shared
@@ -81,10 +88,26 @@ internal sealed class Igi2RetailMenus : IRetailMenus
             menu.Manager.CurrentMenuScreen = request.StartScreen;
         }
 
-        // No configuration yet: I.G.I. 2's settings live in Igi2GameConfig/Igi2PlayerProfile, and there is no
-        // IMenuConfiguration over them — the only one in the tree is Project I.G.I.'s ConfigNatives, which would read
-        // the wrong profiles. Until Phase 2 wires an Igi2 one, the manager's Configuration stays unset, so config
-        // expressions read zero and log a "No native named ..." warning; the main menu itself does not need them.
+        // The configuration the mission screen fills from and the settings screens read: I.G.I. 2's
+        // own profiles over Igi2GameConfig, not Project I.G.I.'s ConfigNatives, which would read the
+        // wrong profiles. Setting it also wires the manager's fallback, which is what opens the
+        // ExternalNatives door Game_SetMission and Game_SetGameMode come through — without a
+        // configuration the fallback stays null and every Config_* and Game_* call in the menu
+        // evaluates to zero unimplemented.
+        IServiceCatalog? services = request.Services;
+        Igi2GameConfig config = services is not null && services.TryGet(out Igi2GameConfig? foundConfig)
+            ? foundConfig
+            : new Igi2GameConfig();
+        Igi2SaveSession? saves = services is not null && services.TryGet(out Igi2SaveSession? foundSaves)
+            ? foundSaves
+            : null;
+        menu.Manager.Configuration = new Igi2ConfigNatives(
+            config,
+            request.Missions,
+            request.Strings,
+            saves,
+            request.Logger);
+
         menu.Manager.ExternalNatives = request.ExternalNatives;
         menu.Manager.Initialize(menu, _shell, request.Logger);
     }

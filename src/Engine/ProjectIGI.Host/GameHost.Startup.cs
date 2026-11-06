@@ -395,6 +395,7 @@ public sealed partial class GameHost
                     // Both of these are game natives rather than menu-system ones.
                     (name, arguments) =>
                         _missionState.TryInvokeFromMenu(name, arguments) ?? musicNatives.TryInvokeFromMenu(name, arguments),
+                    _title.Services,
                     startGame =>
                     {
                         if (startGame)

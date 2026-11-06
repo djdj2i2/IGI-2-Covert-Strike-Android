@@ -32,6 +32,13 @@ public sealed class MenuRenderer : IDisposable
     /// <summary>Gets or sets the magnification asked for; <see cref="UiScale.Automatic"/> derives one.</summary>
     public int Scale { get; set; } = UiScale.Automatic;
 
+    /// <summary>Gets or sets whose menu this draws: its colour table, and which shared chrome it keeps.</summary>
+    /// <remarks>
+    /// Project I.G.I.'s look is the default, so a renderer built without a style draws exactly what
+    /// it drew before. The title's presenter sets its own.
+    /// </remarks>
+    public MenuStyle Style { get; set; } = MenuStyle.Igi1;
+
     /// <summary>Gets the magnification the last draw used.</summary>
     public int EffectiveScale => _scale;
 
@@ -104,9 +111,19 @@ public sealed class MenuRenderer : IDisposable
                 BlendMode.Opaque);
         }
 
-        MenuBackgroundFx.Draw(batch, (screen.Manager as MenuManagerTask)?.BackgroundFx, screenWidth, screenHeight, _scale);
+        // The overlay is the manager's own, always created and ticked; only its drawing is gated,
+        // so I.G.I. 1 keeps it with no manager change and I.G.I. 2 simply never submits it.
+        if (Style.DrawBackgroundFx)
+        {
+            MenuBackgroundFx.Draw(batch, (screen.Manager as MenuManagerTask)?.BackgroundFx, screenWidth, screenHeight, _scale);
+        }
+
         DrawLogo(batch, screenWidth, screenHeight);
-        DrawScreenPanel(batch, screen, screenWidth, screenHeight);
+        if (Style.DrawScreenPanel)
+        {
+            DrawScreenPanel(batch, screen, screenWidth, screenHeight);
+        }
+
         DrawSubtree(batch, screen, screenWidth, screenHeight);
 
         batch.End();
@@ -281,7 +298,11 @@ public sealed class MenuRenderer : IDisposable
             switch (child)
             {
                 case MenuTextTask text:
-                    DrawText(batch, text, screenWidth, screenHeight);
+                    if (text.IsVisible)
+                    {
+                        DrawText(batch, text, screenWidth, screenHeight);
+                    }
+
                     break;
                 case MenuFrameTask frame:
                     DrawFrameBorder(batch, frame, screenWidth, screenHeight);
@@ -318,6 +339,10 @@ public sealed class MenuRenderer : IDisposable
                 case PictureBoxTask picture:
                     DrawPictureBox(batch, picture, screenWidth, screenHeight);
                     break;
+                case MenuStatsScreenTask stats:
+                    DrawWindowBox(batch, stats, screenWidth, screenHeight);
+                    DrawStatsScreen(batch, stats, screenWidth, screenHeight);
+                    break;
                 case ControlsMenuTask controls:
                     DrawControlsMenu(batch, controls, screenWidth, screenHeight);
                     break;
@@ -342,6 +367,11 @@ public sealed class MenuRenderer : IDisposable
     /// in and five down in green, the key four pixels into its column in amber (128, 90, 0).
     /// </para>
     /// <para>
+    /// Those numbers are Project I.G.I.'s: the green is the title's table green at those fractions
+    /// of full intensity, and the amber is the title's key colour, so another title's list draws in
+    /// its own colours at the same fractions.
+    /// </para>
+    /// <para>
     /// The original submits the rows' text, then their bands, then the outline, nearest first; drawn back to front here.
     /// </para>
     /// </remarks>
@@ -357,19 +387,28 @@ public sealed class MenuRenderer : IDisposable
         int x = controls.LayoutX;
         int y = controls.LayoutY;
         int last = Math.Min(controls.Offset + ControlsMenuTask.VisibleRows, ControlsMenuTask.RowCount);
+
+        // The bands, the outline and the action are the title's green, at the fractions the original
+        // uses: 32/128, 48/128 and 16/128 of it. For Project I.G.I.'s (0, 128, 0) those are exactly
+        // the literals this used to carry, so its controls list is pixel-identical; I.G.I. 2's pale
+        // green gives pale bands instead of green ones. The key column takes the title's key colour.
+        (float greenR, float greenG, float greenB) =
+            MenuLayout.GetColour(Style.ColourTable, MenuLayout.GreenIndex, selected: false);
+        (float keyR, float keyG, float keyB) = MenuLayout.ControlsKeyColour(Style.ColourTable);
+
         for (int row = Math.Max(0, controls.Offset), band = 0; row < last; row++, band++)
         {
             bool even = (row & 1) == 0;
             int top = y + (band * ControlsMenuTask.RowHeight);
             batch.FillRect(
                 Centred(x, top, ControlsMenuTask.LabelWidth, ControlsMenuTask.RowHeight, screenWidth, screenHeight),
-                Shade(0f, even ? 32f : 16f, 0f, alpha * 0.5f));
+                Shade(greenR * (even ? 0.25f : 0.125f), greenG * (even ? 0.25f : 0.125f), greenB * (even ? 0.25f : 0.125f), alpha * 0.5f));
             batch.FillRect(
                 Centred(x + ControlsMenuTask.LabelWidth, top, ControlsMenuTask.KeyWidth, ControlsMenuTask.RowHeight, screenWidth, screenHeight),
-                Shade(0f, even ? 48f : 32f, 0f, alpha * 0.5f));
+                Shade(greenR * (even ? 0.375f : 0.25f), greenG * (even ? 0.375f : 0.25f), greenB * (even ? 0.375f : 0.25f), alpha * 0.5f));
         }
 
-        Bgra32 edge = Shade(0f, MenuLayout.FullIntensity, 0f, alpha);
+        Bgra32 edge = Shade(greenR, greenG, greenB, alpha);
         foreach ((int ex, int ey, int width, int height) in MenuLayout.GetBoxOutline(x, y, controls.LayoutWidth, controls.LayoutHeight))
         {
             batch.FillRect(Centred(ex, ey, width, height, screenWidth, screenHeight), edge);
@@ -384,8 +423,8 @@ public sealed class MenuRenderer : IDisposable
             return;
         }
 
-        Bgra32 actionColour = Shade(0f, MenuLayout.FullIntensity, 0f, alpha);
-        Bgra32 keyColour = Shade(MenuLayout.FullIntensity, 90f, 0f, alpha);
+        Bgra32 actionColour = Shade(greenR, greenG, greenB, alpha);
+        Bgra32 keyColour = Shade(keyR, keyG, keyB, alpha);
         for (int row = Math.Max(0, controls.Offset), band = 0; row < last; row++, band++)
         {
             int top = y + (band * ControlsMenuTask.RowHeight) + 5;
@@ -406,6 +445,13 @@ public sealed class MenuRenderer : IDisposable
 
     private void DrawText(SpriteBatch batch, MenuTextTask text, int screenWidth, int screenHeight)
     {
+        // The second gate: DrawText is the choke point, so a hidden entry draws nothing even if a
+        // future caller forgets the subtree's check.
+        if (!text.IsVisible)
+        {
+            return;
+        }
+
         (string label, BitmapTextRenderer? font) = Resolve(text.TextResource, text.FontResource);
         if (font is null || label.Length == 0)
         {
@@ -416,7 +462,7 @@ public sealed class MenuRenderer : IDisposable
 
         // MenuText_Render tests the selection flag at +77, which the manager owns and which the mouse
         // and the keyboard both move — not the pointer-over state.
-        Bgra32 colour = MenuLayout.ToPixel(MenuLayout.GetColour(text.ColourIndex, text.IsHighlighted));
+        Bgra32 colour = MenuLayout.ToPixel(MenuLayout.GetColour(Style.ColourTable, text.ColourIndex, text.IsHighlighted));
 
         font.Draw(batch, label, x, y, colour, _scale, _scale);
     }
@@ -490,7 +536,7 @@ public sealed class MenuRenderer : IDisposable
         // batch paints over the very word it is meant to mark. It goes behind them here. This is the
         // third place the original's submission order only makes sense if its 2D calls are not
         // immediate.
-        Bgra32 tint = MenuLayout.ToPixel(MenuLayout.GetColour(MenuLayout.GreenIndex, toggle.IsHighlighted));
+        Bgra32 tint = MenuLayout.ToPixel(MenuLayout.GetColour(Style.ColourTable, MenuLayout.GreenIndex, toggle.IsHighlighted));
         int halfX = toggle.IsOn ? toggle.LayoutX : toggle.OffHalfX;
         int halfWidth = toggle.IsOn ? toggle.OnHalfWidth : toggle.OffHalfWidth;
 
@@ -648,6 +694,124 @@ public sealed class MenuRenderer : IDisposable
             Bgra32.White);
     }
 
+    /// <summary>Draws the mission a stats screen shows: its name, then its description wrapped to the box.</summary>
+    /// <remarks>
+    /// Screen 914's 986: 420 by 130 in <c>font4.fnt</c>. The name and description come from the
+    /// manager's configuration, which is the only thing that can reach the title's catalogue; with no
+    /// mission to show — no provider, no active mission, or no font — this draws nothing inside the
+    /// box, the way a picture box with no picture draws its empty box and nothing in it. The layout
+    /// itself is a first pass, not retail: the script gives the box and the font and nothing else, so
+    /// the name goes on the first row and the description wraps under it. A device screenshot should
+    /// confirm the rows sit inside the box rather than under the list.
+    /// </remarks>
+    private void DrawStatsScreen(SpriteBatch batch, MenuStatsScreenTask stats, int screenWidth, int screenHeight)
+    {
+        BitmapTextRenderer? font = TryGetFont(stats.Font);
+        if (font is null)
+        {
+            return;
+        }
+
+        IMenuMissionStats? provider = (stats.Manager as MenuManagerTask)?.Configuration as IMenuMissionStats;
+        if (provider is null
+            || !provider.TryGetActiveMissionStats(out string name, out string description))
+        {
+            return;
+        }
+
+        int lineHeight = Math.Max(1, (int)font.Measure("A").Height);
+        int rows = Math.Max(1, stats.LayoutHeight / lineHeight);
+        int row = 0;
+
+        // The name on the first row, the description wrapped under it, both in the white the other
+        // boxes' body text draws in; rows past the box are dropped, not drawn over the frame below.
+        if (name.Length > 0 && row < rows)
+        {
+            Draw(batch, font, name, stats.LayoutX + 2, stats.LayoutY + 1 + (row * lineHeight), screenWidth, screenHeight);
+            row++;
+        }
+
+        foreach (string line in WrapText(font, description, Math.Max(0, stats.LayoutWidth - 4)))
+        {
+            if (row >= rows)
+            {
+                break;
+            }
+
+            Draw(batch, font, line, stats.LayoutX + 2, stats.LayoutY + 1 + (row * lineHeight), screenWidth, screenHeight);
+            row++;
+        }
+    }
+
+    /// <summary>Wraps text to a pixel width, keeping explicit line breaks.</summary>
+    /// <param name="font">The font the width is measured in.</param>
+    /// <param name="text">The text to wrap.</param>
+    /// <param name="maxWidth">The widest a row may be, in authored pixels; zero or less wraps nothing.</param>
+    /// <returns>One entry per row, in order; empty when there is nothing to show.</returns>
+    private static IEnumerable<string> WrapText(BitmapTextRenderer font, string text, int maxWidth)
+    {
+        ArgumentNullException.ThrowIfNull(font);
+        ArgumentNullException.ThrowIfNull(text);
+
+        foreach (string paragraph in text.Split('\n'))
+        {
+            // A CRLF description leaves the carriage return on the paragraph's last word.
+            string line = string.Empty;
+            foreach (string word in paragraph.TrimEnd('\r').Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                foreach (string piece in SplitToWidth(font, word, maxWidth))
+                {
+                    string candidate = line.Length == 0 ? piece : line + " " + piece;
+                    if (maxWidth > 0 && font.Measure(candidate).Width > maxWidth && line.Length > 0)
+                    {
+                        yield return line;
+                        line = piece;
+                    }
+                    else
+                    {
+                        line = candidate;
+                    }
+                }
+            }
+
+            if (line.Length > 0)
+            {
+                yield return line;
+            }
+        }
+    }
+
+    /// <summary>Splits one word into pieces that fit the width, whole when it already does.</summary>
+    /// <param name="font">The font the width is measured in.</param>
+    /// <param name="word">The word to split.</param>
+    /// <param name="maxWidth">The widest a piece may be, in authored pixels; zero or less splits nothing.</param>
+    /// <returns>The pieces, in order.</returns>
+    private static IEnumerable<string> SplitToWidth(BitmapTextRenderer font, string word, int maxWidth)
+    {
+        ArgumentNullException.ThrowIfNull(font);
+        ArgumentNullException.ThrowIfNull(word);
+
+        if (maxWidth <= 0 || font.Measure(word).Width <= maxWidth)
+        {
+            yield return word;
+            yield break;
+        }
+
+        int start = 0;
+        while (start < word.Length)
+        {
+            int length = 1;
+            while (start + length < word.Length
+                && font.Measure(word[start..(start + length + 1)]).Width <= maxWidth)
+            {
+                length++;
+            }
+
+            yield return word.Substring(start, length);
+            start += length;
+        }
+    }
+
     /// <summary>Draws a scrolling list: rows from its scroll offset, with the selected row lit.</summary>
     /// <remarks>
     /// The original draws the row at <c>selected - scrollOffset</c> in a second colour with a bar behind
@@ -681,7 +845,7 @@ public sealed class MenuRenderer : IDisposable
                 // the same green at the highlighted level (GetColour's (c * 0.5) + 64).
                 batch.FillRect(
                     Centred(box.LayoutX + 2, y, box.LayoutWidth - 4, lineHeight, screenWidth, screenHeight),
-                    MenuLayout.ToPixel(MenuLayout.GetColour(MenuLayout.GreenIndex, selected: true)));
+                    MenuLayout.ToPixel(MenuLayout.GetColour(Style.ColourTable, MenuLayout.GreenIndex, selected: true)));
             }
 
             Draw(batch, font, box.Items[index].Label, box.LayoutX + 2, y, screenWidth, screenHeight);
@@ -748,7 +912,7 @@ public sealed class MenuRenderer : IDisposable
             Centred(window.LayoutX, window.LayoutY, window.LayoutWidth, window.LayoutHeight, screenWidth, screenHeight),
             Bgra32.FromRgba(0, 0, 0, (byte)(byte.MaxValue * MenuLayout.BoxFillAlpha)));
 
-        Bgra32 edge = MenuLayout.ToPixel(MenuLayout.GetColour(MenuLayout.GreenIndex, window.IsHighlighted));
+        Bgra32 edge = MenuLayout.ToPixel(MenuLayout.GetColour(Style.ColourTable, MenuLayout.GreenIndex, window.IsHighlighted));
 
         foreach ((int x, int y, int width, int height) in
             MenuLayout.GetBoxOutline(window.LayoutX, window.LayoutY, window.LayoutWidth, window.LayoutHeight))

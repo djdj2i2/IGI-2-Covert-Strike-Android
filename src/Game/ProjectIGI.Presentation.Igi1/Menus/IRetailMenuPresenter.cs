@@ -34,6 +34,7 @@ public interface IRetailMenuPresenter : IMenuHost, IDisposable
 /// <param name="Sounds">Where the menu's sounds play, or <see langword="null"/> for silence.</param>
 /// <param name="Leave">What leaving the menus does, given how the manager left them.</param>
 /// <param name="Logger">Where diagnostics go.</param>
+/// <param name="Style">Whose menu this is: its colour table, and which shared chrome it keeps.</param>
 public readonly record struct RetailMenuPresentationRequest(
     IGraphicsDevice Device,
     VirtualFileSystem FileSystem,
@@ -47,4 +48,5 @@ public readonly record struct RetailMenuPresentationRequest(
     int Scale,
     SoundSystem? Sounds,
     Action<MenuManagerState> Leave,
-    IProjectIGILogger Logger);
+    IProjectIGILogger Logger,
+    MenuStyle Style);

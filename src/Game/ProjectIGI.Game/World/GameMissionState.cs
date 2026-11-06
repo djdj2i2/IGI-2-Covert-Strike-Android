@@ -20,13 +20,24 @@ public sealed class GameMissionState
     /// <summary>The native the menus call to choose a mission.</summary>
     public const string SetMissionNative = "Game_SetMission";
 
+    /// <summary>The native the menus call to record the game mode.</summary>
+    public const string SetGameModeNative = "Game_SetGameMode";
+
     /// <summary>Gets the mission id chosen, or zero when none has been.</summary>
     public int PendingMissionId { get; private set; }
 
-    /// <summary>Serves <c>Game_SetMission</c> to the menu's expression evaluator.</summary>
+    /// <summary>Gets the game mode chosen, or zero — single player — when none has been.</summary>
+    /// <remarks>
+    /// <c>GAME_GAMEMODE_SINGLEPLAYER</c> is 0 and <c>GAME_GAMEMODE_MULTIPLAYER</c> 1. The mission
+    /// screen records it before it starts a mission; nothing reads it yet — v1 is single-player only —
+    /// but the mode is the mission's, so it lives beside the pending id rather than in the menu.
+    /// </remarks>
+    public int PendingGameMode { get; private set; }
+
+    /// <summary>Serves <c>Game_SetMission</c> and <c>Game_SetGameMode</c> to the menu's expression evaluator.</summary>
     /// <param name="name">The native being called.</param>
     /// <param name="arguments">Its arguments.</param>
-    /// <returns>The result, or <see langword="null"/> when the name is not this one.</returns>
+    /// <returns>The result, or <see langword="null"/> when the name is not one of these.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="arguments"/> is <see langword="null"/>.</exception>
     /// <remarks>
     /// A menu expression is evaluated by the menu's own evaluator rather than by the script VM, so the
@@ -36,16 +47,22 @@ public sealed class GameMissionState
     {
         ArgumentNullException.ThrowIfNull(arguments);
 
-        if (!string.Equals(name, SetMissionNative, StringComparison.Ordinal))
+        if (string.Equals(name, SetMissionNative, StringComparison.Ordinal))
         {
-            return null;
+            PendingMissionId = arguments.GetInt32(0);
+            return QvmValue.FromInt32(1);
         }
 
-        PendingMissionId = arguments.GetInt32(0);
-        return QvmValue.FromInt32(1);
+        if (string.Equals(name, SetGameModeNative, StringComparison.Ordinal))
+        {
+            PendingGameMode = arguments.GetInt32(0);
+            return QvmValue.FromInt32(1);
+        }
+
+        return null;
     }
 
-    /// <summary>Registers <c>Game_SetMission</c>.</summary>
+    /// <summary>Registers <c>Game_SetMission</c> and <c>Game_SetGameMode</c>.</summary>
     /// <param name="natives">The script namespace the menu scripts resolve against.</param>
     /// <exception cref="ArgumentNullException"><paramref name="natives"/> is <see langword="null"/>.</exception>
     public void Register(NativeRegistry natives)
@@ -57,6 +74,14 @@ public sealed class GameMissionState
             call =>
             {
                 PendingMissionId = call.GetInt32(0);
+                return QvmValue.FromInt32(1);
+            },
+            1);
+        natives.RegisterFunction(
+            SetGameModeNative,
+            call =>
+            {
+                PendingGameMode = call.GetInt32(0);
                 return QvmValue.FromInt32(1);
             },
             1);

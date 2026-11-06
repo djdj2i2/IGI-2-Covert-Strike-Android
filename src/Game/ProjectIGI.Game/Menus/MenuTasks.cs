@@ -194,6 +194,30 @@ public partial class MenuTextTask : MenuWindowTask
     [ScriptParam(ScriptParamType.String32, "Click Sound Resource")]
     public string ClickSoundResource { get; set; } = string.Empty;
 
+    /// <summary>Gets or sets the expression deciding whether the entry can be chosen.</summary>
+    /// <remarks>
+    /// <para>
+    /// Appended after Project I.G.I.'s five parameters, so the shared prefix verifies unchanged
+    /// against its declaration (see <c>TaskTypeRegistry.VerifyAgainstDeclaration</c>): its script
+    /// declares five, the class carries seven, and the two trailing members read as zero — empty
+    /// expressions, which evaluate to visible and enabled. I.G.I. 2 keeps these expressions on its
+    /// <c>MenuText</c> too, and its by-name adapter sets them by name, so their position in this
+    /// list does not matter there.
+    /// </para>
+    /// <para>
+    /// Project I.G.I. kept these expressions on a separate <c>MenuTextConditional</c>; its
+    /// <c>MenuText</c> never carries them, so they stay empty there and the evaluated state stays
+    /// at its default.
+    /// </para>
+    /// </remarks>
+    [ScriptParam(ScriptParamType.VarString, "isEnabled Expression")]
+    public string IsEnabledExpression { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the expression deciding whether the entry is drawn at all.</summary>
+    /// <remarks>See <see cref="IsEnabledExpression"/> for why this sits after the original five.</remarks>
+    [ScriptParam(ScriptParamType.VarString, "isVisible Expression")]
+    public string IsVisibleExpression { get; set; } = string.Empty;
+
     /// <inheritdoc/>
     /// <remarks>An entry with no action is a caption, and the original does not let one take a click.</remarks>
     public override bool IsInteractive => OnClickScript.Length > 0;
@@ -510,6 +534,48 @@ public partial class PictureBoxTask : MenuWindowTask
     [ScriptParam(ScriptParamType.VarString, "Get Active Picture")]
     public string GetActivePicture { get; set; } = string.Empty;
 
+}
+
+/// <summary>The mission details a mission-select screen shows for the mission its list sits on.</summary>
+/// <remarks>
+/// <para>
+/// I.G.I. 2's <c>MenuStatsScreen</c> (screen 914's 986): 420 by 130 in <c>font4.fnt</c>, fed by
+/// <c>MenuStatsScreen_SetActiveMissionID</c>, which records the id on the manager's configuration
+/// rather than on this task. The renderer asks the configuration for the mission's name and
+/// description when it draws, so this class carries only the three parameters the script declares.
+/// </para>
+/// <para>
+/// Project I.G.I.'s menu never spawns this type, so it is dormant there; the one renderer draws it,
+/// and the per-title difference lives in which configuration answers, not in a second task class.
+/// A second class under the same name would collide with this registration — see
+/// <see cref="MenuTaskTypes.RegisterAll"/> — so I.G.I. 2's classes do not re-register it.
+/// </para>
+/// </remarks>
+public partial class MenuStatsScreenTask : MenuWindowTask
+{
+    /// <summary>Initializes a new instance of the <see cref="MenuStatsScreenTask"/> class.</summary>
+    /// <remarks>
+    /// Both centre flags, like every other box: its parent frame's line-up does not place it (screen
+    /// 914's frames use <c>LineUpMode.None</c>), so it centres itself in its frame — at (110, 325) in
+    /// the 276-by-100 frame the script puts it in, 420 wide against a 276-wide frame.
+    /// </remarks>
+    public MenuStatsScreenTask()
+    {
+        CentreHorizontally = true;
+        CentreVertically = true;
+    }
+
+    /// <summary>Gets or sets the width in pixels.</summary>
+    [ScriptParam(ScriptParamType.Int32, "Width")]
+    public int Width { get => LayoutWidth; set => LayoutWidth = value; }
+
+    /// <summary>Gets or sets the height in pixels.</summary>
+    [ScriptParam(ScriptParamType.Int32, "Height")]
+    public int Height { get => LayoutHeight; set => LayoutHeight = value; }
+
+    /// <summary>Gets or sets the font to draw with.</summary>
+    [ScriptParam(ScriptParamType.String32, "Font")]
+    public string Font { get; set; } = string.Empty;
 }
 
 /// <summary>A block of text chosen from a collected set by an expression.</summary>

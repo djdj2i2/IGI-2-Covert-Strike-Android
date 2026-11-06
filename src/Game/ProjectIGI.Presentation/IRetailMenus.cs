@@ -37,6 +37,7 @@ public sealed record RetailMenuDisplay(
 /// <param name="Sounds">Where the menu's sounds play, or <see langword="null"/> for silence.</param>
 /// <param name="StartScreen">The screen to open on in place of the script's own, or nought to leave the script's.</param>
 /// <param name="ExternalNatives">The game's natives a menu expression may call, which answer <see langword="null"/> for a name they do not know.</param>
+/// <param name="Services">The title's published tables, which the menus' configuration reads, or <see langword="null"/> when the title publishes none.</param>
 /// <param name="Leave">What leaving the menus does: <see langword="true"/> to start the chosen mission, <see langword="false"/> to quit.</param>
 /// <param name="Logger">Where diagnostics go.</param>
 public readonly record struct RetailMenusRequest(
@@ -55,6 +56,7 @@ public readonly record struct RetailMenusRequest(
     SoundSystem? Sounds,
     int StartScreen,
     Func<string, ScriptArguments, QvmValue?> ExternalNatives,
+    IServiceCatalog? Services,
     Action<bool> Leave,
     IProjectIGILogger Logger);
 
