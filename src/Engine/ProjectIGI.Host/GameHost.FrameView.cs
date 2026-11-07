@@ -349,7 +349,7 @@ public sealed partial class GameHost
         RenderResolution resolution = RenderResolutionPolicy.Choose(
             _window.Width,
             _window.Height,
-            ReconstructionCVars.RenderScale.Value,
+            EffectiveRenderScale(),
             wantsTemporal,
             reconstruction);
         _device.SetTextureLodBias(resolution.MipBias);
