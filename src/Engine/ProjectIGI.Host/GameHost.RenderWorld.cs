@@ -75,6 +75,17 @@ public sealed partial class GameHost
             view.MapScene, captured, view.Eye, view.Projection, view.VerticalFieldOfView, view.AspectRatio, cascadesRead,
             view.CascadeCount, view.SmoothPresentation, view.TickBlend);
 
+        // The opaque world is the frame's bulk -- most of its draws and most of its finish. Sealed
+        // here, its finish overlaps the characters, the forward pass, the rig and the HUD still to be
+        // recorded, instead of all of it landing on the recording thread at the submit. WebGPU only:
+        // a Vulkan finish is next to free, and the pass break this costs (a tile store and load) is
+        // nothing the Vulkan path needs to pay. On the deferred path the seal is a no-op -- a scene
+        // pass is open, so SealEncoder refuses -- and the gate keeps it off Vulkan either way.
+        if (_options.Renderer == RendererBackend.WebGpu)
+        {
+            _device.SealRecordedFrame("frame.world");
+        }
+
         ResolveFrameHud(ref view);
 
         DrawCharacters(view.Eye, view.Projection, view.TickBlend, view.ThirdPersonBody);

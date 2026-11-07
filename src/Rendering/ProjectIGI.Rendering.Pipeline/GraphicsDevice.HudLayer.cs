@@ -84,6 +84,12 @@ public sealed partial class GraphicsDevice
             return;
         }
 
+        // What the frame has recorded so far -- the world, the forward pass, the rig -- finishes
+        // while the glow and the composite below are recorded. The pass is already closed here, so
+        // this costs no break, only another command buffer; the deferred path already seals at
+        // every boundary, so it is ungated.
+        SealEncoder("frame.hud");
+
         int width = CurrentMode.Width;
         int height = CurrentMode.Height;
         BuildHudFx();

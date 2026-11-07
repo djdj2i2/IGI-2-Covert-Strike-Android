@@ -369,6 +369,23 @@ public sealed unsafe class WebGpuComputePassEncoder : IRhiComputePassEncoder
     private bool _ended;
     private bool _disposed;
 
+    // What is bound now, so a call that would bind it again is not recorded -- the same dedup the
+    // raster encoder does. A compute pass rebinds its pipeline and every group on every dispatch
+    // (ComputePass.Prepare), and a pass that dispatches a dozen times over one pyramid -- the HUD
+    // glow blur, every frame -- restates the same pipeline a dozen times. That work is part of the
+    // finish cost, and on a frame's compute passes it is all redundant.
+    private const int MaxGroups = 4;
+    private readonly WGPUBindGroup[] _groups = new WGPUBindGroup[MaxGroups];
+    private readonly uint[] _groupOffsets = new uint[MaxGroups];
+    private readonly bool[] _groupHasOffset = new bool[MaxGroups];
+    private WGPUComputePipeline _pipeline;
+
+    // The last push's bytes, and where they landed. A push that repeats what is still bound needs
+    // neither a slice of the ring nor a rebind.
+    private readonly byte[] _lastPush = new byte[256];
+    private int _lastPushLength = -1;
+    private WebGpuPushSlice _lastSlice;
+
     /// <summary>Initialises a new instance of the <see cref="WebGpuComputePassEncoder"/> class.</summary>
     /// <param name="handle">The WebGPU handle.</param>
     /// <param name="pushes">The ring push data is written into.</param>
@@ -398,7 +415,14 @@ public sealed unsafe class WebGpuComputePassEncoder : IRhiComputePassEncoder
         ArgumentNullException.ThrowIfNull(pipeline);
         ThrowIfEnded();
 
-        WebGpuHotCalls.wgpuComputePassEncoderSetPipeline(_handle.Handle, ((WebGpuComputePipeline)pipeline).Handle.Handle);
+        WGPUComputePipeline handle = ((WebGpuComputePipeline)pipeline).Handle;
+        if (handle == _pipeline)
+        {
+            return;
+        }
+
+        _pipeline = handle;
+        WebGpuHotCalls.wgpuComputePassEncoderSetPipeline(_handle.Handle, handle.Handle);
     }
 
     /// <inheritdoc/>
@@ -407,12 +431,31 @@ public sealed unsafe class WebGpuComputePassEncoder : IRhiComputePassEncoder
         ArgumentNullException.ThrowIfNull(group);
         ThrowIfEnded();
 
+        WGPUBindGroup handle = ((WebGpuBindGroup)group).Handle;
+
+        // A group with at most one dynamic offset -- every group here, the push group included -- is
+        // remembered with it; one with more is always recorded.
+        if ((uint)index < MaxGroups && dynamicOffsets.Length <= 1)
+        {
+            bool hasOffset = dynamicOffsets.Length == 1;
+            uint offset = hasOffset ? dynamicOffsets[0] : 0u;
+
+            if (_groups[index] == handle && _groupHasOffset[index] == hasOffset && _groupOffsets[index] == offset)
+            {
+                return;
+            }
+
+            _groups[index] = handle;
+            _groupHasOffset[index] = hasOffset;
+            _groupOffsets[index] = offset;
+        }
+
         fixed (uint* offsets = dynamicOffsets)
         {
             WebGpuHotCalls.wgpuComputePassEncoderSetBindGroup(
                 _handle.Handle,
                 (uint)index,
-                ((WebGpuBindGroup)group).Handle.Handle,
+                handle.Handle,
                 (nuint)dynamicOffsets.Length,
                 offsets);
         }
@@ -435,6 +478,11 @@ public sealed unsafe class WebGpuComputePassEncoder : IRhiComputePassEncoder
                 + "and a binding is written whole. Set the whole block.");
         }
 
+        if (IsBound(data))
+        {
+            return;
+        }
+
         // The write AND the binding, for the reason the raster side gives: nothing above this knows the
         // ring, the group index or where the write landed.
         WebGpuPushSlice landed = _pushes.Write(data);
@@ -442,7 +490,28 @@ public sealed unsafe class WebGpuComputePassEncoder : IRhiComputePassEncoder
 
         uint at = landed.Offset;
         SetBindGroup(_pushGroup, landed.Group, new ReadOnlySpan<uint>(in at));
+
+        if (data.Length <= _lastPush.Length)
+        {
+            data.CopyTo(_lastPush);
+            _lastPushLength = data.Length;
+            _lastSlice = landed;
+        }
+        else
+        {
+            _lastPushLength = -1;
+        }
     }
+
+    // Whether these bytes are the last push and its slice is what the push group still has bound; a
+    // caller binding some other group there in between must not be answered with a stale slice.
+    private bool IsBound(ReadOnlySpan<byte> data) =>
+        _lastPushLength == data.Length
+        && (uint)_pushGroup < MaxGroups
+        && _groups[_pushGroup] == ((WebGpuBindGroup)_lastSlice.Group).Handle
+        && _groupHasOffset[_pushGroup]
+        && _groupOffsets[_pushGroup] == _lastSlice.Offset
+        && data.SequenceEqual(_lastPush.AsSpan(0, _lastPushLength));
 
     /// <inheritdoc/>
     public void Dispatch(int x, int y = 1, int z = 1)
