@@ -20,21 +20,7 @@ For copyright compliance, this APK contains **no copyrighted game data**. To pla
 
 ---
 
-## Status
-
-| | |
-|---|---|
-| Campaign | 19 missions — loading and rendering; playability being proven mission by mission |
-| Player | Movement, weapons and first-person viewmodel in place; being verified on device |
-| Enemy AI | Patrol, perception, squad and combat systems in place; being verified on device |
-| Objectives | Mission objectives, triggers and win/lose flow in place; being verified on device |
-| Menus & HUD | I.G.I. 2 main menu, in-game menu, HUD (binoculars, inventory, scopes, status) in place |
-| Known gaps | Water, AI events, conveyors |
-
-The engine is multi-title by design: this repo is the same codebase as the [Project I.G.I. Android port](https://github.com/rayishere0/Project-IGI-Android-Port), configured to run I.G.I. 2. The host itself is title-agnostic — it just runs whichever title it is pointed at.
-
----
-
+#
 ## Architecture: How It's Made & How It Runs
 
 ```
