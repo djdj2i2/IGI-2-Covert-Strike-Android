@@ -12,7 +12,7 @@ public interface IScenePassDevice
     /// <param name="description">The target to render into.</param>
     /// <returns>
     /// <see langword="true"/> when the capture began. <see langword="false"/> means the backend cannot
-    /// offer one — the caller then draws exactly as the original does, which is a supported outcome
+    /// offer one â€” the caller then draws exactly as the original does, which is a supported outcome
     /// rather than an error.
     /// </returns>
     /// <remarks>
@@ -23,7 +23,7 @@ public interface IScenePassDevice
     /// </para>
     /// <para>
     /// Pair with <see cref="EndSceneCapture"/> and then <see cref="IGraphicsDevice.ResolveScene"/>. Two-dimensional
-    /// drawing — the HUD, the menus, the console — belongs <em>after</em> the resolve, on the back
+    /// drawing â€” the HUD, the menus, the console â€” belongs <em>after</em> the resolve, on the back
     /// buffer, so that it is never tone mapped.
     /// </para>
     /// </remarks>
@@ -53,7 +53,7 @@ public interface IScenePassDevice
     TextureHandle SceneColour { get; }
 
     /// <summary>
-    /// What the resolve is about to multiply the lit buffer by — the exposure a display-referred colour
+    /// What the resolve is about to multiply the lit buffer by â€” the exposure a display-referred colour
     /// must be divided by to survive it.
     /// </summary>
     /// <remarks>
@@ -62,7 +62,7 @@ public interface IScenePassDevice
     /// which the resolve then exposes and tone maps. A colour authored in display terms and written raw
     /// is at the mercy of the eye adaptation: in a dark scene the exposure is high, and a saturated red
     /// sprite comes back pink because the red channel clips long before the other two stop rising.
-    /// Dividing by this lands it at the colour it was asked for whatever the scene is doing — the same
+    /// Dividing by this lands it at the colour it was asked for whatever the scene is doing â€” the same
     /// correction the first-person rig's lighting and the selection glow already take.
     /// </para>
     /// <para>
@@ -95,6 +95,26 @@ public interface IScenePassDevice
     /// <summary>Ends the current pass.</summary>
     /// <exception cref="GraphicsDeviceException">No pass is open.</exception>
     void EndPass();
+
+    /// <summary>Seals what the frame has recorded so far, so its finish overlaps what the frame records next.</summary>
+    /// <param name="label">A name for captures and diagnostics.</param>
+    /// <remarks>
+    /// <para>
+    /// A frame is one encoder finished once, at the swap, unless somebody seals it in pieces: a sealed
+    /// piece finishes while the next is recorded, on a backend that finishes off the recording thread
+    /// (WebGPU), instead of all of it landing on the recording thread at the submit. The deferred path
+    /// already seals at every pass boundary; the direct path never did, so a WebGPU frame's whole finish
+    /// waited until the frame was fully recorded.
+    /// </para>
+    /// <para>
+    /// Closes only the direct present pass, never a scene or shadow pass: while one of those is open the
+    /// seal is refused and this is a no-op, so on the deferred path it changes nothing. The next draw
+    /// reopens the present pass over what it had drawn. Costs one pass break (a tile store and load) on a
+    /// tiler, so the caller seals only where the recording after it is long enough to hide the finish --
+    /// and only on a backend whose finish is worth hiding (WebGPU); on Vulkan a finish is next to free.
+    /// </para>
+    /// </remarks>
+    void SealRecordedFrame(string label);
 
     /// <summary>Stops rendering into the offscreen target.</summary>
     /// <exception cref="GraphicsDeviceException">No capture is in progress, or a pass is still open.</exception>

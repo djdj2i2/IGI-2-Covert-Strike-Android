@@ -202,7 +202,12 @@ public static class AndroidHost
                         new WebGpuWindowHandles(WebGpuWindowSystem.Android, nint.Zero, nativeWindow),
                         landscapeWidth,
                         landscapeHeight,
-                        vsync: true);
+                        vsync: true,
+                        // The finish runs beside the recording thread, not on it: a frame sealed
+                        // mid-frame finishes while the rest of the frame is still being recorded
+                        // (see GraphicsDevice.SealRecordedFrame). With the default inline
+                        // scheduler every finish ran on the recording thread at the submit.
+                        finishing: ThreadPoolWorkScheduler.Instance);
                     rhiDevice = _webGpuRhi;
                     chosenBackend = RendererBackend.WebGpu;
                     DisplayCVars.Renderer.Value = RendererBackend.WebGpu;
