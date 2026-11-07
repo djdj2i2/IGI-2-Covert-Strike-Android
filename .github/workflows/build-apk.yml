@@ -17,12 +17,20 @@ jobs:
           git apply --check aimbot.patch
           git apply aimbot.patch
 
-      - name: Fix upstream compile error v3
+      - name: Fix upstream compile errors v4
         run: |
-          F=src/Game/ProjectIGI.Game/Menus/MenuLayout.cs
-          sed -i 's/\bPanelTint\.Igi/MenuPanelTint.Igi/g' "$F"
-          grep -n "PanelTint\.Igi" "$F"
-          if grep -nE '(^|[^u])PanelTint\.Igi' "$F"; then echo "FIX NOT APPLIED"; exit 1; fi
+          M=src/Game/ProjectIGI.Game/Menus/MenuLayout.cs
+          S=src/Game/ProjectIGI.Frontend/Screens/SettingsScreen.cs
+          T=src/Game/ProjectIGI.Presentation/Hud/Remastered/Touch/TouchControls.cs
+          sed -i 's/\bPanelTint\.Igi/MenuPanelTint.Igi/g' "$M"
+          sed -i 's/crosshairColourBtn\.Activated += () =>/crosshairColourBtn.Activated += _ =>/' "$S"
+          sed -i '1i using ProjectIGI.Game.Player;' "$S"
+          sed -i '/float sdx = point.StartX - ComputerStickRest.X/,/return new Role(RoleKind.Stick, null);/ s/\bsd\([xy]\)\b/navD\1/g' "$T"
+          grep -n "MenuPanelTint.Igi" "$M"
+          grep -n "crosshairColourBtn.Activated" "$S"
+          grep -n "navDx" "$T"
+          if ! grep -q "crosshairColourBtn.Activated += _ =>" "$S"; then echo "FIX NOT APPLIED"; exit 1; fi
+          if ! grep -q "float navDx" "$T"; then echo "FIX NOT APPLIED"; exit 1; fi
 
       - uses: actions/setup-dotnet@v4
         with:
