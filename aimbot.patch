@@ -1,0 +1,215 @@
+diff --git a/src/Engine/ProjectIGI.Host/GameHost.CheatsOverlay.cs b/src/Engine/ProjectIGI.Host/GameHost.CheatsOverlay.cs
+index b4965fc..c72670a 100644
+--- a/src/Engine/ProjectIGI.Host/GameHost.CheatsOverlay.cs
++++ b/src/Engine/ProjectIGI.Host/GameHost.CheatsOverlay.cs
+@@ -101,7 +101,7 @@ public sealed partial class GameHost
+         }
+ 
+         float modalW = Math.Min(700f * scale, width - (32f * scale));
+-        float modalH = Math.Min(410f * scale, height - (32f * scale));
++        float modalH = Math.Min(470f * scale, height - (32f * scale));
+         float modalX = (width - modalW) * 0.5f;
+         float modalY = (height - modalH) * 0.5f;
+ 
+@@ -158,6 +158,16 @@ public sealed partial class GameHost
+             return;
+         }
+ 
++        // Row 4: Aimbot
++        float r4Y = contentY + (rowHeight * 4f);
++        if (clickX >= btnX && clickX <= btnX + btnW && clickY >= r4Y && clickY <= r4Y + btnH)
++        {
++            PlayerCheatCVars.Aimbot.Value = !PlayerCheatCVars.Aimbot.Value;
++            state.Console.SaveSettings();
++            HostConfiguration.Save(_configuration, _logger);
++            return;
++        }
++
+         // Close button at bottom
+         float closeW = 220f * scale;
+         float closeH = 42f * scale;
+@@ -263,7 +273,7 @@ public sealed partial class GameHost
+             painter.FillRect(new UiRect(0f, 0f, width, height), Bgra32.FromRgba(0, 0, 0, 215));
+ 
+             float modalW = Math.Min(700f * scale, width - (32f * scale));
+-            float modalH = Math.Min(410f * scale, height - (32f * scale));
++            float modalH = Math.Min(470f * scale, height - (32f * scale));
+             float modalX = (width - modalW) * 0.5f;
+             float modalY = (height - modalH) * 0.5f;
+ 
+@@ -323,6 +333,7 @@ public sealed partial class GameHost
+             DrawCheatRow(1, "INFINITE AMMUNITION", "Magazines stay filled, reserves never deplete while firing", PlayerCheatCVars.InfiniteAmmo.Value);
+             DrawCheatRow(2, "ALL WEAPONS", "Adds all weapons into inventory for the mission", PlayerCheatCVars.AllWeapons.Value);
+             DrawCheatRow(3, "UNLOCK ALL MISSIONS", $"All {_missions.InProgressionOrder().Count()} missions are selectable in Campaign", PlayerCheatCVars.UnlockAllLevels.Value);
++            DrawCheatRow(4, "AIMBOT", "Shots snap to the nearest enemy in front of your view", PlayerCheatCVars.Aimbot.Value);
+ 
+             // Close button
+             float closeW = 220f * scale;
+diff --git a/src/Game/ProjectIGI.Game.Igi2/Player/Igi2HumanPlayer.Fire.cs b/src/Game/ProjectIGI.Game.Igi2/Player/Igi2HumanPlayer.Fire.cs
+index b94d7af..6b4c466 100644
+--- a/src/Game/ProjectIGI.Game.Igi2/Player/Igi2HumanPlayer.Fire.cs
++++ b/src/Game/ProjectIGI.Game.Igi2/Player/Igi2HumanPlayer.Fire.cs
+@@ -79,6 +79,11 @@ public sealed partial class Igi2HumanPlayer
+     /// </remarks>
+     public override Igi2FireFrame GetFireFrame(bool addInaccuracy)
+     {
++        if (PlayerCheatOptions.Current.Aimbot && TryAimbotOrientation(out float[] locked))
++        {
++            return new Igi2FireFrame(View.Position, locked);
++        }
++
+         Matrix3f v = View.Orientation;
+         float[] o = [v.M11, v.M12, v.M13, v.M21, v.M22, v.M23, v.M31, v.M32, v.M33];
+         if (!addInaccuracy || PerfectShotTimer >= PerfectShotTicks)
+@@ -104,6 +109,85 @@ public sealed partial class Igi2HumanPlayer
+         return new Igi2FireFrame(View.Position, turned);
+     }
+ 
++    /// <summary>How far an aimbot target may be, in world units: 100 metres at 4096 units to the metre.</summary>
++    private const double AimbotRange = 409600.0;
++
++    /// <summary>The cosine of the widest angle off the view an aimbot target may sit at, 35 degrees.</summary>
++    private const double AimbotConeCosine = 0.81915204;
++
++    /// <summary>How far below a standing soldier's eyes the aimbot aims, in world units: about a tenth of a metre.</summary>
++    private const double AimbotHeadDrop = 400.0;
++
++    /// <summary>
++    /// The aimbot cheat: finds the living soldier nearest the line of sight, within <see cref="AimbotRange"/> and the
++    /// <see cref="AimbotConeCosine"/> cone, and gives the orientation that looks at its head.
++    /// </summary>
++    /// <param name="orientation">The nine cells of the orientation, row by row, when a target is found.</param>
++    /// <returns><see langword="true"/> when a target was found.</returns>
++    /// <remarks>
++    /// The view looks along its orientation's second column (<c>Retract</c> and the fire frame use it as forward) with Z up;
++    /// <c>EngineEuler.Rotation(alpha, 0, gamma)</c> looks along (-cos(alpha) sin(gamma), cos(alpha) cos(gamma), sin(alpha)),
++    /// so a direction d is turned back into alpha = atan2(dz, |dxy|) and gamma = atan2(-dx, dy). There is no line-of-sight
++    /// test: a soldier behind a wall is still aimed at.
++    /// </remarks>
++    private bool TryAimbotOrientation(out float[] orientation)
++    {
++        orientation = [];
++        Matrix3f view = View.Orientation;
++        double fx = view.M12, fy = view.M22, fz = view.M32;
++        double forwardLength = Math.Sqrt((fx * fx) + (fy * fy) + (fz * fz));
++        if (forwardLength < 1e-6)
++        {
++            return false;
++        }
++
++        fx /= forwardLength;
++        fy /= forwardLength;
++        fz /= forwardLength;
++
++        Vector3d from = View.Position;
++        double bestCosine = AimbotConeCosine;
++        double bestX = 0, bestY = 0, bestZ = 0;
++        bool found = false;
++        foreach (Igi2Human human in Surroundings.Humans)
++        {
++            if (human is not Soldiers.Igi2HumanSoldier || human.IsDead)
++            {
++                continue;
++            }
++
++            Vector3d eyes = EyesAt(human.Position, human.Pose);
++            double dx = eyes.X - from.X;
++            double dy = eyes.Y - from.Y;
++            double dz = eyes.Z - AimbotHeadDrop - from.Z;
++            double distance = Math.Sqrt((dx * dx) + (dy * dy) + (dz * dz));
++            if (distance < 1.0 || distance > AimbotRange)
++            {
++                continue;
++            }
++
++            double cosine = ((dx * fx) + (dy * fy) + (dz * fz)) / distance;
++            if (cosine > bestCosine)
++            {
++                bestCosine = cosine;
++                bestX = dx / distance;
++                bestY = dy / distance;
++                bestZ = dz / distance;
++                found = true;
++            }
++        }
++
++        if (!found)
++        {
++            return false;
++        }
++
++        float alpha = (float)Math.Atan2(bestZ, Math.Sqrt((bestX * bestX) + (bestY * bestY)));
++        float gamma = (float)Math.Atan2(-bestX, bestY);
++        orientation = EngineEuler.Rotation(alpha, 0f, gamma);
++        return true;
++    }
++
+     /// <summary>
+     /// The weapon objects the player holds its weapon by: in first person, the clip's <c>weapon</c> attach objects on the
+     /// view (<c>Human_GetWeaponObjectHandler</c>, <c>igi2 0x500A10</c>, the view's controller's <c>WeaponMagicObj</c>
+diff --git a/src/Game/ProjectIGI.Game/Player/PlayerCheatCVars.cs b/src/Game/ProjectIGI.Game/Player/PlayerCheatCVars.cs
+index 1b91001..2481646 100644
+--- a/src/Game/ProjectIGI.Game/Player/PlayerCheatCVars.cs
++++ b/src/Game/ProjectIGI.Game/Player/PlayerCheatCVars.cs
+@@ -72,6 +72,11 @@ public static class PlayerCheatCVars
+         "g_cheat_no_recoil", false, CheatFlags,
+         "Disable weapon recoil (cheat).");
+ 
++    /// <summary>Turns every shot the player fires toward the nearest living soldier in front of the view.</summary>
++    public static readonly BoolCVar Aimbot = CVar.Bool(
++        "g_cheat_aimbot", false, CheatFlags,
++        "Aim the player's shots at the nearest enemy in front of the view (cheat).");
++
+     /// <summary>Refills the magazine from the reserve each tick, so a reload is never needed until it runs dry.</summary>
+     public static readonly BoolCVar NoReload = CVar.Bool(
+         "g_cheat_no_reload", false, CheatFlags,
+diff --git a/src/Game/ProjectIGI.Game/Player/PlayerCheatOptions.cs b/src/Game/ProjectIGI.Game/Player/PlayerCheatOptions.cs
+index 5ba8492..0d4e6dd 100644
+--- a/src/Game/ProjectIGI.Game/Player/PlayerCheatOptions.cs
++++ b/src/Game/ProjectIGI.Game/Player/PlayerCheatOptions.cs
+@@ -10,6 +10,7 @@ namespace ProjectIGI.Game.Player;
+ /// <param name="UnlockAllLevels">Whether every campaign mission may be played.</param>
+ /// <param name="NoRecoil">Whether fired rounds leave the view where it was.</param>
+ /// <param name="NoReload">Whether the magazine refills from the reserve without a reload, until the reserve runs out.</param>
++/// <param name="Aimbot">Whether the player's shots are turned toward the nearest enemy in front of the view.</param>
+ public readonly record struct PlayerCheatOptions(
+     float SpeedMultiplier,
+     float JumpMultiplier,
+@@ -19,7 +20,8 @@ public readonly record struct PlayerCheatOptions(
+     bool AllWeapons,
+     bool UnlockAllLevels,
+     bool NoRecoil,
+-    bool NoReload)
++    bool NoReload,
++    bool Aimbot = false)
+ {
+     /// <summary>Gets the set with every cheat off: the unmodified game.</summary>
+     public static PlayerCheatOptions Retail { get; } = new(
+@@ -31,7 +33,8 @@ public readonly record struct PlayerCheatOptions(
+         AllWeapons: false,
+         UnlockAllLevels: false,
+         NoRecoil: false,
+-        NoReload: false);
++        NoReload: false,
++        Aimbot: false);
+ 
+     /// <summary>Gets the cheats the variables ask for, or <see cref="Retail"/> while either gate is shut.</summary>
+     public static PlayerCheatOptions Current
+@@ -44,6 +47,7 @@ public readonly record struct PlayerCheatOptions(
+                 || PlayerCheatCVars.UnlockAllLevels.Value
+                 || PlayerCheatCVars.NoRecoil.Value
+                 || PlayerCheatCVars.NoReload.Value
++                || PlayerCheatCVars.Aimbot.Value
+                 || PlayerCheatCVars.Speed.Value != 1f
+                 || PlayerCheatCVars.Jump.Value != 1f
+                 || PlayerCheatCVars.HealthScale.Value != 1f;
+@@ -61,7 +65,8 @@ public readonly record struct PlayerCheatOptions(
+                     PlayerCheatCVars.AllWeapons.Value,
+                     PlayerCheatCVars.UnlockAllLevels.Value,
+                     PlayerCheatCVars.NoRecoil.Value,
+-                    PlayerCheatCVars.NoReload.Value),
++                    PlayerCheatCVars.NoReload.Value,
++                    PlayerCheatCVars.Aimbot.Value),
+                 dev,
+                 enabled);
+         }
